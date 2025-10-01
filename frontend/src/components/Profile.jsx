@@ -1,0 +1,300 @@
+import { useState, useEffect, useContext } from 'react'
+import { motion } from 'framer-motion'
+import { UserCircle, FileText, Bell, Settings, LogOut, Users, Sparkles, Edit2, Heart, MessageCircle } from 'lucide-react'
+import axios from 'axios'
+import { UserContext } from '../context/UserContext'
+import LoginPrompt from './LoginPrompt'
+
+const API_BASE = 'http://localhost:5001/api'
+
+const Profile = () => {
+  const { currentUser, logout, loading: userLoading, setCurrentUser } = useContext(UserContext)
+  const [thoughtmates, setThoughtmates] = useState([])
+  const [myThoughts, setMyThoughts] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [editingBio, setEditingBio] = useState(false)
+  const [bio, setBio] = useState('')
+  const [activeSection, setActiveSection] = useState('thoughts')
+
+  useEffect(() => {
+    if (currentUser) {
+      fetchData()
+      setBio(currentUser.bio || '')
+    }
+  }, [currentUser])
+
+  const fetchData = async () => {
+    try {
+      const [thoughtmatesRes, thoughtsRes] = await Promise.all([
+        axios.get(`${API_BASE}/users/${currentUser.id}/thoughtmates?limit=10`),
+        axios.get(`${API_BASE}/users/${currentUser.id}/thoughts`)
+      ])
+      setThoughtmates(thoughtmatesRes.data)
+      setMyThoughts(thoughtsRes.data)
+    } catch (error) {
+      console.error('Error fetching data:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleSaveBio = async () => {
+    try {
+      await axios.put(`${API_BASE}/users/${currentUser.id}/bio`, { bio })
+      setCurrentUser({ ...currentUser, bio })
+      setEditingBio(false)
+    } catch (error) {
+      console.error('Error updating bio:', error)
+    }
+  }
+
+  if (userLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+        >
+          <Sparkles className="text-accent-blue" size={32} />
+        </motion.div>
+      </div>
+    )
+  }
+
+  if (!currentUser) {
+    return <LoginPrompt />
+  }
+
+  return (
+    <div className="min-h-screen pb-20">
+      {/* Profile Header */}
+      <div className="relative">
+        <div className="h-32 bg-gradient-to-br from-accent-blue to-accent-purple" />
+        <div className="absolute top-20 left-1/2 -translate-x-1/2">
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            className="relative"
+          >
+            <img
+              src={currentUser.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${currentUser.username}`}
+              alt={currentUser.username}
+              className="w-24 h-24 rounded-full border-4 border-dark-bg"
+            />
+            <div className="absolute bottom-0 right-0 w-6 h-6 bg-accent-green rounded-full border-2 border-dark-bg" />
+          </motion.div>
+        </div>
+      </div>
+
+      {/* Profile Info */}
+      <div className="text-center mt-14 px-4">
+        <h2 className="text-2xl font-bold">{currentUser.username}</h2>
+        <div className="inline-flex items-center px-3 py-1 bg-dark-card border border-accent-blue/30 rounded-full mt-2">
+          <Sparkles size={12} className="text-accent-blue mr-1" />
+          <span className="text-xs font-medium text-accent-blue">Standard Member</span>
+        </div>
+
+        {/* Bio */}
+        <div className="mt-4 max-w-md mx-auto">
+          {editingBio ? (
+            <div>
+              <textarea
+                value={bio}
+                onChange={(e) => setBio(e.target.value)}
+                placeholder="Tell us about yourself..."
+                className="w-full px-4 py-2 bg-dark-card border border-dark-border rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-accent-blue transition-colors resize-none"
+                rows={3}
+                maxLength={150}
+              />
+              <div className="flex justify-end space-x-2 mt-2">
+                <button
+                  onClick={() => {
+                    setBio(currentUser.bio || '')
+                    setEditingBio(false)
+                  }}
+                  className="px-3 py-1 text-sm text-gray-400 hover:text-white transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSaveBio}
+                  className="px-3 py-1 text-sm bg-accent-blue text-white rounded-lg hover:bg-accent-blue/90 transition-colors"
+                >
+                  Save
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-start justify-center space-x-2">
+              <p className="text-sm text-gray-400">
+                {currentUser.bio || 'No bio yet. Click edit to add one!'}
+              </p>
+              <button
+                onClick={() => setEditingBio(true)}
+                className="p-1 text-gray-400 hover:text-accent-blue transition-colors"
+              >
+                <Edit2 size={14} />
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-3 gap-4 px-4 mt-6">
+        <div className="bg-dark-card rounded-xl p-3 text-center border border-dark-border">
+          <p className="text-2xl font-bold text-accent-blue">{currentUser.thoughts_count || myThoughts.length}</p>
+          <p className="text-xs text-gray-400 mt-1">Thoughts</p>
+        </div>
+        <div className="bg-dark-card rounded-xl p-3 text-center border border-dark-border">
+          <p className="text-2xl font-bold text-accent-purple">{currentUser.thoughtmates_count || thoughtmates.length}</p>
+          <p className="text-xs text-gray-400 mt-1">Thoughtmates</p>
+        </div>
+        <div className="bg-dark-card rounded-xl p-3 text-center border border-dark-border">
+          <p className="text-2xl font-bold text-accent-green">{currentUser.followers_count || 0}</p>
+          <p className="text-xs text-gray-400 mt-1">Followers</p>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex items-center px-4 mt-6 space-x-6 border-b border-dark-border">
+        <button
+          onClick={() => setActiveSection('thoughts')}
+          className={`pb-2 text-sm font-medium transition-colors relative ${
+            activeSection === 'thoughts' ? 'text-white' : 'text-gray-400'
+          }`}
+        >
+          My Thoughts
+          {activeSection === 'thoughts' && (
+            <motion.div
+              layoutId="profileTab"
+              className="absolute bottom-0 left-0 right-0 h-0.5 bg-accent-blue"
+            />
+          )}
+        </button>
+        <button
+          onClick={() => setActiveSection('settings')}
+          className={`pb-2 text-sm font-medium transition-colors relative ${
+            activeSection === 'settings' ? 'text-white' : 'text-gray-400'
+          }`}
+        >
+          Settings
+          {activeSection === 'settings' && (
+            <motion.div
+              layoutId="profileTab"
+              className="absolute bottom-0 left-0 right-0 h-0.5 bg-accent-blue"
+            />
+          )}
+        </button>
+      </div>
+
+      {/* Content */}
+      <div className="px-4 mt-4">
+        {activeSection === 'thoughts' && (
+          <div className="space-y-4">
+            {myThoughts.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-gray-400">You haven't posted any thoughts yet</p>
+              </div>
+            ) : (
+              myThoughts.map((thought) => (
+                <ThoughtItem key={thought.id} thought={thought} />
+              ))
+            )}
+          </div>
+        )}
+
+        {activeSection === 'settings' && (
+          <div className="space-y-2">
+            <MenuItem icon={UserCircle} label="Personal information" />
+            <MenuItem icon={Bell} label="Notification settings" />
+            <MenuItem icon={Settings} label="App settings" />
+            <MenuItem icon={FileText} label="Privacy policy" />
+          </div>
+        )}
+      </div>
+
+      {/* Logout */}
+      <div className="px-4 mt-6">
+        <motion.button
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          onClick={logout}
+          className="w-full flex items-center justify-center space-x-2 p-4 bg-red-500/10 text-red-400 rounded-xl border border-red-500/20 hover:bg-red-500/20 transition-colors"
+        >
+          <LogOut size={18} />
+          <span className="font-medium">Logout</span>
+        </motion.button>
+      </div>
+    </div>
+  )
+}
+
+const MenuItem = ({ icon: Icon, label, badge }) => (
+  <motion.button
+    whileHover={{ x: 4 }}
+    className="w-full flex items-center justify-between p-4 bg-dark-card rounded-xl border border-dark-border hover:border-accent-blue/30 transition-colors"
+  >
+    <div className="flex items-center space-x-3">
+      <Icon size={20} className="text-gray-400" />
+      <span className="text-sm font-medium">{label}</span>
+    </div>
+    <div className="flex items-center space-x-2">
+      {badge !== undefined && (
+        <span className="px-2 py-0.5 bg-accent-blue/20 text-accent-blue text-xs rounded-full font-medium">
+          {badge}
+        </span>
+      )}
+      <span className="text-gray-400">→</span>
+    </div>
+  </motion.button>
+)
+
+const ThoughtItem = ({ thought }) => (
+  <motion.div
+    initial={{ opacity: 0, y: 20 }}
+    animate={{ opacity: 1, y: 0 }}
+    className="bg-dark-card rounded-xl border border-dark-border p-4"
+  >
+    <p className="text-white mb-3 leading-relaxed">{thought.content}</p>
+    <div className="flex items-center justify-between text-sm">
+      <div className="flex items-center space-x-4 text-gray-400">
+        <div className="flex items-center space-x-1">
+          <Heart size={16} />
+          <span>{thought.like_count || 0}</span>
+        </div>
+        <div className="flex items-center space-x-1">
+          <MessageCircle size={16} />
+          <span>{thought.comment_count || 0}</span>
+        </div>
+      </div>
+      <span className="text-xs text-gray-400">
+        {new Date(thought.created_at).toLocaleDateString()}
+      </span>
+    </div>
+  </motion.div>
+)
+
+const ThoughtmateCard = ({ thoughtmate }) => (
+  <motion.div
+    whileHover={{ scale: 1.02 }}
+    className="flex items-center space-x-3 p-3 bg-dark-card rounded-xl border border-dark-border hover:border-accent-blue/30 transition-colors"
+  >
+    <img
+      src={thoughtmate.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${thoughtmate.username}`}
+      alt={thoughtmate.username}
+      className="w-12 h-12 rounded-full"
+    />
+    <div className="flex-1">
+      <p className="font-medium">{thoughtmate.username}</p>
+      <p className="text-xs text-gray-400">
+        {thoughtmate.thoughts_count || 0} thoughts
+      </p>
+    </div>
+    <span className="text-sm font-medium text-accent-green">
+      {Math.round(thoughtmate.similarity_score * 100)}%
+    </span>
+  </motion.div>
+)
+
+export default Profile
