@@ -7,7 +7,7 @@ import LoginPrompt from './LoginPrompt'
 
 const API_BASE = 'http://localhost:5001/api'
 
-const Thoughtmates = () => {
+const Thoughtmates = ({ onStartChat }) => {
   const { currentUser, loading: userLoading } = useContext(UserContext)
   const [thoughtmates, setThoughtmates] = useState([])
   const [loading, setLoading] = useState(true)
@@ -108,7 +108,7 @@ const Thoughtmates = () => {
         ) : (
           <div className="space-y-3">
             {thoughtmates.map((mate, index) => (
-              <ThoughtmateCard key={mate.id} thoughtmate={mate} index={index} />
+              <ThoughtmateCard key={mate.id} thoughtmate={mate} index={index} onStartChat={onStartChat} />
             ))}
           </div>
         )}
@@ -117,7 +117,7 @@ const Thoughtmates = () => {
   )
 }
 
-const ThoughtmateCard = ({ thoughtmate, index }) => {
+const ThoughtmateCard = ({ thoughtmate, index, onStartChat }) => {
   const { currentUser } = useContext(UserContext)
   const [isFollowing, setIsFollowing] = useState(thoughtmate.is_following || false)
   const [loading, setLoading] = useState(false)
@@ -153,7 +153,16 @@ const ThoughtmateCard = ({ thoughtmate, index }) => {
         user_id: currentUser.id,
         other_user_id: thoughtmate.id
       })
-      alert(`Chat feature coming soon! Conversation ID: ${response.data.conversation_id}`)
+
+      // Navigate to chat with conversation details
+      if (onStartChat) {
+        onStartChat({
+          conversation_id: response.data.conversation_id,
+          other_user_id: thoughtmate.id,
+          other_user_username: thoughtmate.username,
+          other_user_avatar: thoughtmate.avatar_url
+        })
+      }
     } catch (error) {
       console.error('Error starting chat:', error)
       alert('Failed to start chat')

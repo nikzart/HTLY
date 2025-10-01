@@ -1,11 +1,11 @@
 import { motion } from 'framer-motion'
-import { Home, Users, Bell, User } from 'lucide-react'
+import { Home, Users, MessageCircle, User } from 'lucide-react'
 
 const BottomNav = ({ currentView, setCurrentView }) => {
   const navItems = [
     { id: 'feed', icon: Home, label: 'Feed' },
     { id: 'thoughtmates', icon: Users, label: 'Thoughtmates' },
-    { id: 'notifications', icon: Bell, label: 'Notifications' },
+    { id: 'messages', icon: MessageCircle, label: 'Messages' },
     { id: 'profile', icon: User, label: 'Profile' }
   ]
 
