@@ -456,6 +456,13 @@ def send_message(conversation_id):
     messages = db.get_conversation_messages(conversation_id, sender_id)
     message = next((m for m in messages if m['id'] == message_id), None)
 
+    # Broadcast the new message to all clients in real-time
+    if message:
+        socketio.emit('message_sent', {
+            'conversation_id': conversation_id,
+            'message': message
+        })
+
     return jsonify(message), 201
 
 @app.route('/api/users/<int:user_id>/unread-count', methods=['GET'])
