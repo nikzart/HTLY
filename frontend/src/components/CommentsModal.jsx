@@ -73,7 +73,7 @@ const CommentsModal = ({ thought, currentUser, onClose, onCommentAdded }) => {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-end md:items-center justify-center p-4"
+      className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-end md:items-center justify-center p-4 pb-20"
       onClick={onClose}
     >
       <motion.div
@@ -82,7 +82,7 @@ const CommentsModal = ({ thought, currentUser, onClose, onCommentAdded }) => {
         exit={{ y: '100%', opacity: 0 }}
         transition={{ type: 'spring', damping: 25 }}
         onClick={(e) => e.stopPropagation()}
-        className="bg-dark-card w-full max-w-2xl rounded-t-3xl md:rounded-3xl border border-dark-border flex flex-col max-h-[80vh]"
+        className="bg-dark-card w-full max-w-2xl rounded-t-3xl md:rounded-3xl border border-dark-border flex flex-col max-h-[70vh] mb-2"
       >
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-dark-border">

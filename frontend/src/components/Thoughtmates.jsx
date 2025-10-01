@@ -47,9 +47,9 @@ const Thoughtmates = ({ onStartChat }) => {
   }
 
   return (
-    <div className="min-h-screen">
-      {/* Header */}
-      <div className="sticky top-0 z-10 bg-dark-bg/95 backdrop-blur-sm border-b border-dark-border">
+    <div className="flex flex-col h-screen">
+      {/* Header - Fixed */}
+      <div className="flex-shrink-0 bg-dark-bg/95 backdrop-blur-sm border-b border-dark-border">
         <div className="flex items-center justify-between p-4">
           <div>
             <h1 className="text-2xl font-bold bg-gradient-to-r from-accent-blue to-accent-purple bg-clip-text text-transparent">
@@ -64,54 +64,55 @@ const Thoughtmates = ({ onStartChat }) => {
         </div>
       </div>
 
-      {/* Info Card */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="m-4 p-4 bg-gradient-to-br from-accent-purple/10 to-accent-blue/10 rounded-2xl border border-accent-purple/20"
-      >
-        <div className="flex items-start space-x-3">
-          <div className="p-2 bg-accent-purple/20 rounded-full">
-            <Sparkles size={20} className="text-accent-purple" />
-          </div>
-          <div className="flex-1">
-            <h3 className="font-semibold text-white mb-1">AI-Powered Matching</h3>
-            <p className="text-sm text-gray-400">
-              Thoughtmates are discovered automatically based on semantic similarity of your thoughts.
-              The more you post, the better the matches!
-            </p>
-          </div>
-        </div>
-      </motion.div>
-
-      {/* Thoughtmates List */}
-      <div className="p-4">
-        {loading ? (
-          <div className="flex justify-center py-12">
-            <motion.div
-              animate={{ rotate: 360 }}
-              transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-            >
-              <Sparkles className="text-accent-blue" size={24} />
-            </motion.div>
-          </div>
-        ) : thoughtmates.length === 0 ? (
-          <div className="text-center py-12">
-            <div className="w-20 h-20 bg-gradient-to-br from-accent-purple/20 to-accent-blue/20 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Users size={32} className="text-accent-purple" />
+      {/* Thoughtmates List - Scrollable */}
+      <div className="flex-1 overflow-y-auto p-4 pb-28" style={{ overscrollBehavior: 'contain' }}>
+        {/* Info Card */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-4 p-4 bg-gradient-to-br from-accent-purple/10 to-accent-blue/10 rounded-2xl border border-accent-purple/20"
+        >
+          <div className="flex items-start space-x-3">
+            <div className="p-2 bg-accent-purple/20 rounded-full">
+              <Sparkles size={20} className="text-accent-purple" />
             </div>
-            <h3 className="text-lg font-semibold mb-2">No Thoughtmates Yet</h3>
-            <p className="text-gray-400 text-sm max-w-xs mx-auto">
-              Post more thoughts to discover people who think like you. The AI will automatically find your matches!
-            </p>
+            <div className="flex-1">
+              <h3 className="font-semibold text-white mb-1">AI-Powered Matching</h3>
+              <p className="text-sm text-gray-400">
+                Thoughtmates are discovered automatically based on semantic similarity of your thoughts.
+                The more you post, the better the matches!
+              </p>
+            </div>
           </div>
-        ) : (
-          <div className="space-y-3">
-            {thoughtmates.map((mate, index) => (
-              <ThoughtmateCard key={mate.id} thoughtmate={mate} index={index} onStartChat={onStartChat} />
-            ))}
-          </div>
-        )}
+        </motion.div>
+        <div>
+          {loading ? (
+            <div className="flex justify-center py-12">
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+              >
+                <Sparkles className="text-accent-blue" size={24} />
+              </motion.div>
+            </div>
+          ) : thoughtmates.length === 0 ? (
+            <div className="text-center py-12">
+              <div className="w-20 h-20 bg-gradient-to-br from-accent-purple/20 to-accent-blue/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Users size={32} className="text-accent-purple" />
+              </div>
+              <h3 className="text-lg font-semibold mb-2">No Thoughtmates Yet</h3>
+              <p className="text-gray-400 text-sm max-w-xs mx-auto">
+                Post more thoughts to discover people who think like you. The AI will automatically find your matches!
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {thoughtmates.map((mate, index) => (
+                <ThoughtmateCard key={mate.id} thoughtmate={mate} index={index} onStartChat={onStartChat} />
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )

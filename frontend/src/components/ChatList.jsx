@@ -75,7 +75,7 @@ const ChatList = ({ onSelectChat }) => {
   }
 
   return (
-    <div className="flex flex-col" style={{ height: 'calc(100vh - 5rem)' }}>
+    <div className="flex flex-col h-screen">
       {/* Header - Fixed */}
       <div className="flex-shrink-0 bg-dark-bg border-b border-dark-border">
         <div className="flex items-center justify-between p-4">
@@ -92,7 +92,7 @@ const ChatList = ({ onSelectChat }) => {
       </div>
 
       {/* Conversations List - Scrollable */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto pb-28">
         {conversations.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 px-4">
             <div className="p-4 bg-dark-card rounded-full mb-4">

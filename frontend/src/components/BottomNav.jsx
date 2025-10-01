@@ -1,11 +1,12 @@
 import { motion } from 'framer-motion'
-import { Home, Users, MessageCircle, User } from 'lucide-react'
+import { Home, Users, MessageCircle, User, Sparkles } from 'lucide-react'
 
-const BottomNav = ({ currentView, setCurrentView }) => {
+const BottomNav = ({ currentView, setCurrentView, onShareThought }) => {
   const navItems = [
-    { id: 'feed', icon: Home, label: 'Feed' },
-    { id: 'thoughtmates', icon: Users, label: 'Thoughtmates' },
-    { id: 'messages', icon: MessageCircle, label: 'Messages' },
+    { id: 'feed', icon: Home, label: 'Home' },
+    { id: 'thoughtmates', icon: Users, label: 'Mates' },
+    { id: 'share', icon: Sparkles, label: 'Share', isAction: true },
+    { id: 'messages', icon: MessageCircle, label: 'Chat' },
     { id: 'profile', icon: User, label: 'Profile' }
   ]
 
@@ -13,35 +14,73 @@ const BottomNav = ({ currentView, setCurrentView }) => {
     <motion.div
       initial={{ y: 100 }}
       animate={{ y: 0 }}
-      className="fixed bottom-0 left-0 right-0 bg-dark-card border-t border-dark-border"
+      className="fixed bottom-6 left-0 right-0 z-50 px-6"
     >
-      <div className="max-w-md mx-auto flex justify-around items-center h-16 px-4">
-        {navItems.map((item) => {
-          const Icon = item.icon
-          const isActive = currentView === item.id
+      <div className="max-w-md mx-auto">
+        <div
+          className="bg-dark-card/70 rounded-full px-3 py-3 shadow-2xl border border-dark-border/30"
+          style={{
+            backdropFilter: 'blur(20px) saturate(180%)',
+            WebkitBackdropFilter: 'blur(20px) saturate(180%)'
+          }}
+        >
+          <div className="flex justify-around items-center gap-1">
+            {navItems.map((item) => {
+              const Icon = item.icon
+              const isActive = currentView === item.id
 
-          return (
-            <motion.button
-              key={item.id}
-              onClick={() => setCurrentView(item.id)}
-              className="flex flex-col items-center justify-center flex-1 h-full relative"
-              whileTap={{ scale: 0.95 }}
-            >
-              <Icon
-                size={24}
-                className={`${
-                  isActive ? 'text-accent-blue' : 'text-gray-400'
-                } transition-colors`}
-              />
-              {isActive && (
-                <motion.div
-                  layoutId="activeTab"
-                  className="absolute bottom-0 left-1/2 -translate-x-1/2 w-12 h-1 bg-accent-blue rounded-t-full"
-                />
-              )}
-            </motion.button>
-          )
-        })}
+              // Special handling for Share action button
+              if (item.isAction) {
+                return (
+                  <motion.button
+                    key={item.id}
+                    onClick={onShareThought}
+                    className="relative flex items-center justify-center"
+                    whileTap={{ scale: 0.9 }}
+                  >
+                    <div className="p-2 bg-gradient-to-r from-accent-blue to-accent-purple rounded-full">
+                      <Icon
+                        size={22}
+                        className="text-white"
+                        strokeWidth={2}
+                      />
+                    </div>
+                  </motion.button>
+                )
+              }
+
+              return (
+                <motion.button
+                  key={item.id}
+                  onClick={() => setCurrentView(item.id)}
+                  className="relative flex items-center justify-center"
+                  whileTap={{ scale: 0.9 }}
+                >
+                  {isActive ? (
+                    <motion.div
+                      layoutId="activeTab"
+                      className="flex items-center gap-2 bg-white text-dark-bg px-4 py-2 rounded-full"
+                      initial={{ scale: 0.8 }}
+                      animate={{ scale: 1 }}
+                      transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                    >
+                      <Icon size={20} strokeWidth={2.5} />
+                      <span className="text-sm font-semibold">{item.label}</span>
+                    </motion.div>
+                  ) : (
+                    <div className="p-2">
+                      <Icon
+                        size={22}
+                        className="text-gray-400"
+                        strokeWidth={2}
+                      />
+                    </div>
+                  )}
+                </motion.button>
+              )
+            })}
+          </div>
+        </div>
       </div>
     </motion.div>
   )

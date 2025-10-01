@@ -66,7 +66,7 @@ const Profile = () => {
   }
 
   return (
-    <div className="min-h-screen pb-20">
+    <div className="flex flex-col h-screen">
       {/* Profile Header */}
       <div className="relative">
         <div className="h-32 bg-gradient-to-br from-accent-blue to-accent-purple" />
@@ -188,8 +188,8 @@ const Profile = () => {
         </button>
       </div>
 
-      {/* Content */}
-      <div className="px-4 mt-4">
+      {/* Content - Scrollable */}
+      <div className="flex-1 overflow-y-auto px-4 mt-4 pb-28" style={{ overscrollBehavior: 'contain' }}>
         {activeSection === 'thoughts' && (
           <div className="space-y-4">
             {myThoughts.length === 0 ? (
@@ -212,19 +212,19 @@ const Profile = () => {
             <MenuItem icon={FileText} label="Privacy policy" />
           </div>
         )}
-      </div>
 
-      {/* Logout */}
-      <div className="px-4 mt-6">
-        <motion.button
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          onClick={logout}
-          className="w-full flex items-center justify-center space-x-2 p-4 bg-red-500/10 text-red-400 rounded-xl border border-red-500/20 hover:bg-red-500/20 transition-colors"
-        >
-          <LogOut size={18} />
-          <span className="font-medium">Logout</span>
-        </motion.button>
+        {/* Logout */}
+        <div className="mt-6 mb-6">
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={logout}
+            className="w-full flex items-center justify-center space-x-2 p-4 bg-red-500/10 text-red-400 rounded-xl border border-red-500/20 hover:bg-red-500/20 transition-colors"
+          >
+            <LogOut size={18} />
+            <span className="font-medium">Logout</span>
+          </motion.button>
+        </div>
       </div>
     </div>
   )

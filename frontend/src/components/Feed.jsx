@@ -10,12 +10,11 @@ import CommentsModal from './CommentsModal'
 
 const API_BASE = 'http://localhost:5001/api'
 
-const Feed = () => {
+const Feed = ({ showComposer = false, setShowComposer = () => {} }) => {
   const { currentUser, loading: userLoading } = useContext(UserContext)
   const { socket } = useSocket()
   const [thoughts, setThoughts] = useState([])
   const [loading, setLoading] = useState(true)
-  const [showComposer, setShowComposer] = useState(false)
   const [activeTab, setActiveTab] = useState('trending')
   const [selectedThought, setSelectedThought] = useState(null)
 
@@ -173,9 +172,9 @@ const Feed = () => {
   }
 
   return (
-    <div className="min-h-screen">
-      {/* Header */}
-      <div className="sticky top-0 z-10 bg-dark-bg/95 backdrop-blur-sm border-b border-dark-border">
+    <div className="flex flex-col h-screen">
+      {/* Header - Fixed */}
+      <div className="flex-shrink-0 bg-dark-bg/95 backdrop-blur-sm border-b border-dark-border">
         <div className="flex items-center justify-between p-4">
           <div>
             <h1 className="text-2xl font-bold bg-gradient-to-r from-accent-blue to-accent-purple bg-clip-text text-transparent">
@@ -213,38 +212,37 @@ const Feed = () => {
         </div>
       </div>
 
-      {/* Onboarding Card */}
-      {activeTab === 'trending' && thoughts.length === 0 && !loading && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="m-4 p-4 bg-gradient-to-br from-dark-card to-dark-hover rounded-2xl border border-dark-border"
-        >
-          <div className="flex items-start space-x-3">
-            <div className="p-2 bg-accent-blue/20 rounded-full">
-              <Sparkles size={20} className="text-accent-blue" />
+      {/* Thoughts Feed - Scrollable */}
+      <div className="flex-1 overflow-y-auto space-y-4 p-4 pb-28" style={{ overscrollBehavior: 'contain' }}>
+        {/* Onboarding Card */}
+        {activeTab === 'trending' && thoughts.length === 0 && !loading && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="p-4 bg-gradient-to-br from-dark-card to-dark-hover rounded-2xl border border-dark-border mb-4"
+          >
+            <div className="flex items-start space-x-3">
+              <div className="p-2 bg-accent-blue/20 rounded-full">
+                <Sparkles size={20} className="text-accent-blue" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-semibold text-white mb-1">Share your thoughts</h3>
+                <p className="text-sm text-gray-400 mb-3">
+                  Post what's on your mind and find people who think like you
+                </p>
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => setShowComposer(true)}
+                  className="px-4 py-2 bg-accent-blue text-white rounded-full text-sm font-medium flex items-center space-x-2"
+                >
+                  <span>Get Started</span>
+                  <span>→</span>
+                </motion.button>
+              </div>
             </div>
-            <div className="flex-1">
-              <h3 className="font-semibold text-white mb-1">Share your thoughts</h3>
-              <p className="text-sm text-gray-400 mb-3">
-                Post what's on your mind and find people who think like you
-              </p>
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => setShowComposer(true)}
-                className="px-4 py-2 bg-accent-blue text-white rounded-full text-sm font-medium flex items-center space-x-2"
-              >
-                <span>Get Started</span>
-                <span>→</span>
-              </motion.button>
-            </div>
-          </div>
-        </motion.div>
-      )}
-
-      {/* Thoughts Feed */}
-      <div className="space-y-4 p-4">
+          </motion.div>
+        )}
         {loading ? (
           <div className="flex justify-center py-8">
             <motion.div
@@ -301,18 +299,12 @@ const Feed = () => {
         )}
       </AnimatePresence>
 
-      {/* Floating Action Button */}
-      <motion.button
-        whileHover={{ scale: 1.1 }}
-        whileTap={{ scale: 0.9 }}
-        onClick={() => setShowComposer(true)}
-        className="fixed bottom-20 right-4 w-14 h-14 bg-gradient-to-r from-accent-blue to-accent-purple rounded-full shadow-lg flex items-center justify-center z-40"
-      >
-        <Sparkles size={24} className="text-white" />
-      </motion.button>
     </div>
   )
 }
+
+// Export setShowComposer so it can be used by parent
+Feed.setShowComposer = null
 
 const TabButton = ({ label, isActive, onClick }) => (
   <button

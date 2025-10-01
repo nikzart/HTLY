@@ -130,7 +130,7 @@ const ChatWindow = ({ conversation, onBack }) => {
   }
 
   return (
-    <div className="flex flex-col" style={{ height: 'calc(100vh - 5rem)' }}>
+    <div className="flex flex-col h-screen">
       {/* Header - Fixed */}
       <div className="flex-shrink-0 bg-dark-bg border-b border-dark-border">
         <div className="flex items-center space-x-3 p-4">
@@ -187,7 +187,7 @@ const ChatWindow = ({ conversation, onBack }) => {
       </div>
 
       {/* Input - Fixed at bottom */}
-      <form onSubmit={handleSend} className="flex-shrink-0 bg-dark-bg border-t border-dark-border p-4">
+      <form onSubmit={handleSend} className="flex-shrink-0 bg-dark-bg border-t border-dark-border p-4 pb-28">
         <div className="flex items-end space-x-3">
           <input
             type="text"
