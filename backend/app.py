@@ -1,11 +1,15 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+from flask_socketio import SocketIO, emit
 from database import Database
 from embedding_service import EmbeddingService
 from typing import List, Dict
 
 app = Flask(__name__)
 CORS(app, resources={r"/api/*": {"origins": "*"}})
+
+# Initialize SocketIO with CORS support
+socketio = SocketIO(app, cors_allowed_origins="*")
 
 db = Database()
 embedding_service = EmbeddingService()
@@ -112,6 +116,9 @@ def create_thought():
     thought['is_liked'] = False
     thought['is_saved'] = False
 
+    # Broadcast new thought to all clients
+    socketio.emit('thought_created', {'thought': thought})
+
     return jsonify(thought), 201
 
 @app.route('/api/thoughts', methods=['GET'])
@@ -204,6 +211,13 @@ def like_thought(thought_id):
         return jsonify({'error': 'user_id is required'}), 400
 
     db.like_thought(thought_id, user_id)
+
+    # Get updated thought data and broadcast to all clients
+    thoughts = db.get_all_thoughts(user_id)
+    thought = next((t for t in thoughts if t['id'] == thought_id), None)
+    if thought:
+        socketio.emit('thought_liked', {'thought_id': thought_id, 'thought': thought})
+
     return jsonify({'success': True})
 
 @app.route('/api/thoughts/<int:thought_id>/unlike', methods=['POST'])
@@ -215,6 +229,13 @@ def unlike_thought(thought_id):
         return jsonify({'error': 'user_id is required'}), 400
 
     db.unlike_thought(thought_id, user_id)
+
+    # Get updated thought data and broadcast to all clients
+    thoughts = db.get_all_thoughts(user_id)
+    thought = next((t for t in thoughts if t['id'] == thought_id), None)
+    if thought:
+        socketio.emit('thought_unliked', {'thought_id': thought_id, 'thought': thought})
+
     return jsonify({'success': True})
 
 @app.route('/api/thoughts/<int:thought_id>/likes', methods=['GET'])
@@ -238,6 +259,10 @@ def create_comment(thought_id):
 
     # Find the comment we just created
     comment = next((c for c in comments if c['id'] == comment_id), None)
+
+    # Broadcast the new comment to all clients
+    if comment:
+        socketio.emit('comment_posted', {'thought_id': thought_id, 'comment': comment})
 
     return jsonify(comment), 201
 
@@ -468,4 +493,4 @@ def update_user_matches(user_id: int):
             db.create_or_update_match(other_user['id'], user_id, similarity)
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5001)
+    socketio.run(app, debug=True, port=5001, allow_unsafe_werkzeug=True)

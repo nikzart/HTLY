@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Search, Heart, MessageCircle, Share2, Sparkles, Bookmark } from 'lucide-react'
 import axios from 'axios'
 import { UserContext } from '../context/UserContext'
+import { useSocket } from '../context/SocketContext'
 import ThoughtComposer from './ThoughtComposer'
 import LoginPrompt from './LoginPrompt'
 import CommentsModal from './CommentsModal'
@@ -11,6 +12,7 @@ const API_BASE = 'http://localhost:5001/api'
 
 const Feed = () => {
   const { currentUser, loading: userLoading } = useContext(UserContext)
+  const { socket } = useSocket()
   const [thoughts, setThoughts] = useState([])
   const [loading, setLoading] = useState(true)
   const [showComposer, setShowComposer] = useState(false)
@@ -22,6 +24,54 @@ const Feed = () => {
       fetchThoughts()
     }
   }, [currentUser, activeTab])
+
+  // Real-time event listeners
+  useEffect(() => {
+    if (!socket) return
+
+    const handleThoughtLiked = (data) => {
+      setThoughts(prevThoughts =>
+        prevThoughts.map(t =>
+          t.id === data.thought_id ? { ...t, ...data.thought } : t
+        )
+      )
+    }
+
+    const handleThoughtUnliked = (data) => {
+      setThoughts(prevThoughts =>
+        prevThoughts.map(t =>
+          t.id === data.thought_id ? { ...t, ...data.thought } : t
+        )
+      )
+    }
+
+    const handleCommentPosted = (data) => {
+      setThoughts(prevThoughts =>
+        prevThoughts.map(t =>
+          t.id === data.thought_id
+            ? { ...t, comment_count: (t.comment_count || 0) + 1 }
+            : t
+        )
+      )
+    }
+
+    const handleThoughtCreated = (data) => {
+      // Add new thought to the beginning of the feed
+      setThoughts(prevThoughts => [data.thought, ...prevThoughts])
+    }
+
+    socket.on('thought_liked', handleThoughtLiked)
+    socket.on('thought_unliked', handleThoughtUnliked)
+    socket.on('comment_posted', handleCommentPosted)
+    socket.on('thought_created', handleThoughtCreated)
+
+    return () => {
+      socket.off('thought_liked', handleThoughtLiked)
+      socket.off('thought_unliked', handleThoughtUnliked)
+      socket.off('comment_posted', handleCommentPosted)
+      socket.off('thought_created', handleThoughtCreated)
+    }
+  }, [socket])
 
   const fetchThoughts = async () => {
     if (!currentUser) return

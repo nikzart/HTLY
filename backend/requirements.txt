@@ -1,5 +1,7 @@
 flask==3.0.0
 flask-cors==4.0.0
+flask-socketio==5.3.6
+python-socketio==5.11.1
 openai==1.58.1
 numpy==1.26.3
 python-dotenv==1.0.0

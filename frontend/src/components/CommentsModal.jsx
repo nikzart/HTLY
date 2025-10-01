@@ -2,10 +2,12 @@ import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { X, Send, Sparkles } from 'lucide-react'
 import axios from 'axios'
+import { useSocket } from '../context/SocketContext'
 
 const API_BASE = 'http://localhost:5001/api'
 
 const CommentsModal = ({ thought, currentUser, onClose, onCommentAdded }) => {
+  const { socket } = useSocket()
   const [comments, setComments] = useState([])
   const [newComment, setNewComment] = useState('')
   const [loading, setLoading] = useState(true)
@@ -14,6 +16,24 @@ const CommentsModal = ({ thought, currentUser, onClose, onCommentAdded }) => {
   useEffect(() => {
     fetchComments()
   }, [thought.id])
+
+  // Real-time comment listener
+  useEffect(() => {
+    if (!socket) return
+
+    const handleCommentPosted = (data) => {
+      // Only add comment if it's for this thought
+      if (data.thought_id === thought.id) {
+        setComments(prevComments => [...prevComments, data.comment])
+      }
+    }
+
+    socket.on('comment_posted', handleCommentPosted)
+
+    return () => {
+      socket.off('comment_posted', handleCommentPosted)
+    }
+  }, [socket, thought.id])
 
   const fetchComments = async () => {
     try {
@@ -32,12 +52,12 @@ const CommentsModal = ({ thought, currentUser, onClose, onCommentAdded }) => {
 
     setSubmitting(true)
     try {
-      const response = await axios.post(`${API_BASE}/thoughts/${thought.id}/comments`, {
+      await axios.post(`${API_BASE}/thoughts/${thought.id}/comments`, {
         user_id: currentUser.id,
         content: newComment.trim()
       })
 
-      setComments([...comments, response.data])
+      // Don't update comments locally - the real-time event will handle it
       setNewComment('')
       onCommentAdded()
     } catch (error) {
