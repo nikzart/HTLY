@@ -1,6 +1,6 @@
 import { useState, useEffect, useContext } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Search, Heart, MessageCircle, Share2, Sparkles, Bookmark, Trash2 } from 'lucide-react'
+import { Search, Heart, MessageCircle, Sparkles, Bookmark, Trash2 } from 'lucide-react'
 import axios from 'axios'
 import { UserContext } from '../context/UserContext'
 import { useSocket } from '../context/SocketContext'
@@ -224,12 +224,12 @@ const Feed = () => {
         {/* Tabs */}
         <div className="flex items-center px-4 pb-3 space-x-6 overflow-x-auto">
           <TabButton
-            label="Trending"
+            label="For You"
             isActive={activeTab === 'trending'}
             onClick={() => setActiveTab('trending')}
           />
           <TabButton
-            label="News"
+            label="Hot"
             isActive={activeTab === 'news'}
             onClick={() => setActiveTab('news')}
           />
@@ -411,13 +411,6 @@ const ThoughtCard = ({ thought, index, currentUser, onLike, onSave, onCommentCli
           }`}
         >
           <Bookmark size={18} fill={isSaved ? 'currentColor' : 'none'} />
-        </motion.button>
-
-        <motion.button
-          whileTap={{ scale: 0.9 }}
-          className="flex items-center space-x-2 text-gray-400 hover:text-accent-green transition-colors"
-        >
-          <Share2 size={18} />
         </motion.button>
 
         {/* Delete button - only visible for own thoughts */}
