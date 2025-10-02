@@ -1,26 +1,24 @@
-import { useState, useContext } from 'react'
 import { motion } from 'framer-motion'
-import { Sparkles, UserPlus } from 'lucide-react'
-import { UserContext } from '../context/UserContext'
+import { Sparkles, LogIn, UserPlus } from 'lucide-react'
+import { useAuth0 } from '@auth0/auth0-react'
 
 const LoginPrompt = () => {
-  const [username, setUsername] = useState('')
-  const [loading, setLoading] = useState(false)
-  const { login } = useContext(UserContext)
+  const { loginWithRedirect, isLoading } = useAuth0()
 
-  const handleSubmit = async (e) => {
-    e.preventDefault()
-    if (!username.trim()) return
+  const handleLogin = () => {
+    loginWithRedirect({
+      authorizationParams: {
+        screen_hint: 'login'
+      }
+    })
+  }
 
-    setLoading(true)
-    try {
-      await login(username.trim())
-    } catch (error) {
-      console.error('Login error:', error)
-      alert('Failed to login. Please try again.')
-    } finally {
-      setLoading(false)
-    }
+  const handleSignup = () => {
+    loginWithRedirect({
+      authorizationParams: {
+        screen_hint: 'signup'
+      }
+    })
   }
 
   return (
@@ -54,47 +52,32 @@ const LoginPrompt = () => {
         >
           <h2 className="text-xl font-bold mb-2">Welcome!</h2>
           <p className="text-sm text-gray-400 mb-6">
-            Enter your username to start finding people who think like you
+            Sign up or log in to start finding people who think like you
           </p>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium mb-2">Username</label>
-              <input
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder="Enter your username"
-                className="w-full px-4 py-3 bg-dark-bg border border-dark-border rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-accent-blue transition-colors"
-                disabled={loading}
-              />
-            </div>
+          <div className="space-y-3">
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={handleSignup}
+              disabled={isLoading}
+              className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-gradient-to-r from-accent-blue to-accent-purple text-white rounded-xl font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <UserPlus size={18} />
+              <span>Sign Up</span>
+            </motion.button>
 
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
-              type="submit"
-              disabled={loading || !username.trim()}
-              className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-gradient-to-r from-accent-blue to-accent-purple text-white rounded-xl font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              onClick={handleLogin}
+              disabled={isLoading}
+              className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-dark-bg border border-dark-border text-white rounded-xl font-medium hover:border-accent-blue/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? (
-                <>
-                  <motion.div
-                    animate={{ rotate: 360 }}
-                    transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                  >
-                    <Sparkles size={18} />
-                  </motion.div>
-                  <span>Loading...</span>
-                </>
-              ) : (
-                <>
-                  <UserPlus size={18} />
-                  <span>Get Started</span>
-                </>
-              )}
+              <LogIn size={18} />
+              <span>Log In</span>
             </motion.button>
-          </form>
+          </div>
         </motion.div>
 
         {/* Features */}

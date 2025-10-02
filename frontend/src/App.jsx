@@ -1,5 +1,6 @@
 import { useState, useEffect, useContext } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
+import { useAuth0 } from '@auth0/auth0-react'
 import Feed from './components/Feed'
 import Profile from './components/Profile'
 import Thoughtmates from './components/Thoughtmates'
@@ -7,8 +8,10 @@ import ChatList from './components/ChatList'
 import ChatWindow from './components/ChatWindow'
 import BottomNav from './components/BottomNav'
 import ThoughtComposer from './components/ThoughtComposer'
+import ProfileSetup from './components/ProfileSetup'
 import { UserProvider, UserContext } from './context/UserContext'
 import { SocketProvider, useSocket } from './context/SocketContext'
+import { setupAxiosInterceptors } from './utils/axiosConfig'
 
 const pageVariants = {
   initial: (direction) => ({
@@ -34,7 +37,8 @@ const pageVariants = {
 }
 
 function AppContent() {
-  const { currentUser } = useContext(UserContext)
+  const { getAccessTokenSilently } = useAuth0()
+  const { currentUser, needsProfileSetup, completeProfileSetup } = useContext(UserContext)
   const { socket } = useSocket()
   const [currentView, setCurrentView] = useState('feed')
   const [selectedConversation, setSelectedConversation] = useState(null)
@@ -45,6 +49,11 @@ function AppContent() {
   const [mountCounter, setMountCounter] = useState(0)
 
   const views = ['feed', 'thoughtmates', 'messages', 'profile']
+
+  // Setup axios interceptor
+  useEffect(() => {
+    setupAxiosInterceptors(getAccessTokenSilently)
+  }, [getAccessTokenSilently])
 
   // Fetch initial unread count from conversations
   useEffect(() => {
@@ -124,6 +133,11 @@ function AppContent() {
     }
   }
 
+  // Show profile setup if needed
+  if (needsProfileSetup) {
+    return <ProfileSetup onComplete={completeProfileSetup} />
+  }
+
   return (
     <div className="min-h-screen bg-dark-bg text-white overflow-hidden">
           <div className="max-w-md mx-auto">
@@ -141,12 +155,16 @@ function AppContent() {
               )}
               {currentView === 'profile' && <Profile />}
           </div>
-          <BottomNav
-            currentView={currentView}
-            setCurrentView={handleViewChange}
-            onShareThought={() => setShowComposer(true)}
-            unreadCount={unreadCount}
-          />
+
+          {/* Only show navbar when user is logged in */}
+          {currentUser && (
+            <BottomNav
+              currentView={currentView}
+              setCurrentView={handleViewChange}
+              onShareThought={() => setShowComposer(true)}
+              unreadCount={unreadCount}
+            />
+          )}
 
           {/* Global Thought Composer - Available from any page */}
           <AnimatePresence>

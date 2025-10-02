@@ -1,6 +1,6 @@
-import { useState, useEffect, useContext } from 'react'
+import { useState, useEffect, useContext, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Search, Heart, MessageCircle, Sparkles, Bookmark, Trash2 } from 'lucide-react'
+import { Search, Heart, MessageCircle, Sparkles, Bookmark, Trash2, ArrowUp } from 'lucide-react'
 import axios from 'axios'
 import { UserContext } from '../context/UserContext'
 import { useSocket } from '../context/SocketContext'
@@ -16,6 +16,8 @@ const Feed = () => {
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('trending')
   const [selectedThought, setSelectedThought] = useState(null)
+  const [showScrollTop, setShowScrollTop] = useState(false)
+  const scrollContainerRef = useRef(null)
 
   useEffect(() => {
     if (currentUser) {
@@ -188,6 +190,30 @@ const Feed = () => {
     fetchThoughts()
   }
 
+  const handleScroll = () => {
+    if (scrollContainerRef.current) {
+      const scrollTop = scrollContainerRef.current.scrollTop
+      setShowScrollTop(scrollTop > 300)
+    }
+  }
+
+  const scrollToTop = () => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+      })
+    }
+  }
+
+  useEffect(() => {
+    const container = scrollContainerRef.current
+    if (container) {
+      container.addEventListener('scroll', handleScroll)
+      return () => container.removeEventListener('scroll', handleScroll)
+    }
+  }, [])
+
   if (userLoading) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -247,7 +273,15 @@ const Feed = () => {
       </div>
 
       {/* Thoughts Feed - Scrollable */}
-      <div className="flex-1 overflow-y-auto space-y-4 p-4 pb-28" style={{ overscrollBehavior: 'contain' }}>
+      <div
+        ref={scrollContainerRef}
+        className="flex-1 overflow-y-auto space-y-4 p-4 pb-28 scrollbar-hide"
+        style={{
+          overscrollBehavior: 'contain',
+          scrollbarWidth: 'none',
+          msOverflowStyle: 'none'
+        }}
+      >
         {/* Onboarding Card */}
         {activeTab === 'trending' && thoughts.length === 0 && !loading && (
           <motion.div
@@ -312,6 +346,26 @@ const Feed = () => {
             onClose={() => setSelectedThought(null)}
             onCommentAdded={handleCommentAdded}
           />
+        )}
+      </AnimatePresence>
+
+      {/* Scroll to Top Button */}
+      <AnimatePresence>
+        {showScrollTop && (
+          <div className="fixed bottom-28 left-0 right-0 z-50 px-6 pointer-events-none">
+            <div className="max-w-md mx-auto flex justify-end pr-2">
+              <motion.button
+                initial={{ opacity: 0, scale: 0 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0 }}
+                onClick={scrollToTop}
+                className="p-4 bg-gradient-to-r from-accent-blue to-accent-purple hover:opacity-90 rounded-full shadow-2xl transition-opacity pointer-events-auto"
+                whileTap={{ scale: 0.9 }}
+              >
+                <ArrowUp size={24} className="text-white" strokeWidth={2.5} />
+              </motion.button>
+            </div>
+          </div>
         )}
       </AnimatePresence>
 

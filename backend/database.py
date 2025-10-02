@@ -17,16 +17,22 @@ class Database:
         conn = self.get_connection()
         cursor = conn.cursor()
 
-        # Users table with bio
+        # Users table with bio and Auth0 fields
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 username TEXT UNIQUE NOT NULL,
                 avatar_url TEXT,
                 bio TEXT DEFAULT '',
+                auth0_id TEXT UNIQUE,
+                email TEXT,
+                profile_completed INTEGER DEFAULT 0,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ''')
+
+        # Migrate existing users table if needed
+        self._migrate_users_table(cursor)
 
         # Thoughts table with embedding stored as JSON
         cursor.execute('''
@@ -137,6 +143,24 @@ class Database:
         conn.commit()
         conn.close()
 
+    def _migrate_users_table(self, cursor):
+        """Add Auth0 columns to existing users table if they don't exist"""
+        # Get existing columns
+        cursor.execute("PRAGMA table_info(users)")
+        columns = [row[1] for row in cursor.fetchall()]
+
+        # Add auth0_id if missing (without UNIQUE constraint in ALTER)
+        if 'auth0_id' not in columns:
+            cursor.execute('ALTER TABLE users ADD COLUMN auth0_id TEXT')
+
+        # Add email if missing
+        if 'email' not in columns:
+            cursor.execute('ALTER TABLE users ADD COLUMN email TEXT')
+
+        # Add profile_completed if missing
+        if 'profile_completed' not in columns:
+            cursor.execute('ALTER TABLE users ADD COLUMN profile_completed INTEGER DEFAULT 0')
+
     # User operations
     def create_user(self, username: str, avatar_url: str = None, bio: str = '') -> int:
         conn = self.get_connection()
@@ -180,6 +204,43 @@ class Database:
         users = cursor.fetchall()
         conn.close()
         return [dict(user) for user in users]
+
+    # Auth0 user operations
+    def create_user_with_auth0(self, auth0_id: str, email: str, username: str = None, avatar_url: str = None) -> int:
+        """Create a new user with Auth0 credentials"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        # If username not provided, generate one from email
+        if not username:
+            username = email.split('@')[0]
+        cursor.execute(
+            'INSERT INTO users (auth0_id, email, username, avatar_url, profile_completed) VALUES (?, ?, ?, ?, ?)',
+            (auth0_id, email, username, avatar_url, 0)
+        )
+        user_id = cursor.lastrowid
+        conn.commit()
+        conn.close()
+        return user_id
+
+    def get_user_by_auth0_id(self, auth0_id: str) -> Optional[dict]:
+        """Get user by Auth0 ID"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute('SELECT * FROM users WHERE auth0_id = ?', (auth0_id,))
+        user = cursor.fetchone()
+        conn.close()
+        return dict(user) if user else None
+
+    def update_user_profile(self, user_id: int, username: str, avatar_url: str, bio: str):
+        """Update user profile and mark as completed"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            'UPDATE users SET username = ?, avatar_url = ?, bio = ?, profile_completed = 1 WHERE id = ?',
+            (username, avatar_url, bio, user_id)
+        )
+        conn.commit()
+        conn.close()
 
     # Thought operations
     def create_thought(self, user_id: int, content: str, embedding: List[float]) -> int:

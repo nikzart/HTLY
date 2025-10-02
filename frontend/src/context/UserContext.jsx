@@ -1,68 +1,141 @@
 import { createContext, useState, useEffect } from 'react'
+import { useAuth0 } from '@auth0/auth0-react'
 import axios from 'axios'
 
 export const UserContext = createContext()
 
-const API_BASE = 'http://localhost:5001/api'
+const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5001/api'
 
 export const UserProvider = ({ children }) => {
+  const { isAuthenticated, isLoading, getAccessTokenSilently, user: auth0User, logout: auth0Logout } = useAuth0()
   const [currentUser, setCurrentUser] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [needsProfileSetup, setNeedsProfileSetup] = useState(false)
 
   useEffect(() => {
-    // Check if user exists in localStorage
-    const savedUser = localStorage.getItem('htly_user')
-    if (savedUser) {
-      const user = JSON.parse(savedUser)
-      // Fetch updated user data
-      axios.get(`${API_BASE}/users/${user.id}`)
-        .then(res => {
-          setCurrentUser(res.data)
-          setLoading(false)
-        })
-        .catch(() => {
-          // If user not found, clear localStorage
-          localStorage.removeItem('htly_user')
-          setLoading(false)
-        })
-    } else {
-      setLoading(false)
-    }
-  }, [])
-
-  const login = async (username) => {
-    try {
-      // Try to create user or get existing
-      const response = await axios.post(`${API_BASE}/users`, {
-        username,
-        avatar_url: `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`
-      })
-      const user = response.data
-      setCurrentUser(user)
-      localStorage.setItem('htly_user', JSON.stringify(user))
-      return user
-    } catch (error) {
-      if (error.response?.status === 409) {
-        // User exists, get user by username
-        const users = await axios.get(`${API_BASE}/users`)
-        const existingUser = users.data.find(u => u.username === username)
-        if (existingUser) {
-          setCurrentUser(existingUser)
-          localStorage.setItem('htly_user', JSON.stringify(existingUser))
-          return existingUser
-        }
+    const initializeUser = async () => {
+      if (isLoading) {
+        return
       }
-      throw error
+
+      if (!isAuthenticated) {
+        setCurrentUser(null)
+        setLoading(false)
+        setNeedsProfileSetup(false)
+        return
+      }
+
+      console.log('Auth0 authenticated, user:', auth0User)
+
+      try {
+        console.log('Getting access token from Auth0...')
+        // Get Auth0 access token
+        let token
+        try {
+          token = await getAccessTokenSilently({
+            authorizationParams: {
+              audience: import.meta.env.VITE_AUTH0_AUDIENCE,
+              scope: "openid profile email"
+            }
+          })
+          console.log('Got token successfully')
+        } catch (tokenError) {
+          console.warn('Could not get access token with audience, trying without:', tokenError)
+          // Try without audience as fallback
+          token = await getAccessTokenSilently()
+        }
+        console.log('Calling backend with token...')
+
+        // Call our backend auth callback endpoint
+        const response = await axios.post(
+          `${API_BASE}/auth/callback`,
+          {},
+          {
+            headers: {
+              Authorization: `Bearer ${token}`
+            }
+          }
+        )
+
+        console.log('Backend response:', response.data)
+        const { user, is_new_user } = response.data
+
+        // Check if profile setup is needed
+        if (is_new_user || !user.profile_completed) {
+          setNeedsProfileSetup(true)
+          setCurrentUser(user)
+        } else {
+          setCurrentUser(user)
+          setNeedsProfileSetup(false)
+        }
+      } catch (error) {
+        console.error('Error initializing user:', error)
+        console.error('Error details:', error.response?.data || error.message)
+
+        // If token retrieval fails, log out
+        if (error.error === 'login_required' || error.error === 'consent_required') {
+          console.log('Login required, redirecting to Auth0...')
+          auth0Logout({
+            logoutParams: {
+              returnTo: window.location.origin
+            }
+          })
+        }
+
+        setCurrentUser(null)
+        setNeedsProfileSetup(false)
+      } finally {
+        setLoading(false)
+      }
     }
+
+    initializeUser()
+  }, [isAuthenticated, isLoading, getAccessTokenSilently])
+
+  const completeProfileSetup = (user) => {
+    setCurrentUser(user)
+    setNeedsProfileSetup(false)
   }
 
   const logout = () => {
     setCurrentUser(null)
-    localStorage.removeItem('htly_user')
+    setNeedsProfileSetup(false)
+    auth0Logout({
+      logoutParams: {
+        returnTo: window.location.origin
+      }
+    })
+  }
+
+  const refreshUser = async () => {
+    if (!isAuthenticated) return
+
+    try {
+      const token = await getAccessTokenSilently()
+      const response = await axios.get(
+        `${API_BASE}/auth/me`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      )
+      setCurrentUser(response.data)
+    } catch (error) {
+      console.error('Error refreshing user:', error)
+    }
   }
 
   return (
-    <UserContext.Provider value={{ currentUser, setCurrentUser, login, logout, loading }}>
+    <UserContext.Provider value={{
+      currentUser,
+      setCurrentUser,
+      logout,
+      loading,
+      needsProfileSetup,
+      completeProfileSetup,
+      refreshUser
+    }}>
       {children}
     </UserContext.Provider>
   )

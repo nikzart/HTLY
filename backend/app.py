@@ -1,9 +1,15 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from flask_socketio import SocketIO, emit
 from database import Database
 from embedding_service import EmbeddingService
+from auth_middleware import requires_auth, optional_auth
 from typing import List, Dict
+import os
+import uuid
+from werkzeug.utils import secure_filename
+from PIL import Image
+import io
 
 app = Flask(__name__)
 CORS(app, resources={r"/api/*": {"origins": "*"}})
@@ -14,10 +20,206 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 db = Database()
 embedding_service = EmbeddingService()
 
+# Avatar upload configuration
+UPLOAD_FOLDER = 'uploads/avatars'
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
+AVATAR_SIZE = (512, 512)
+
+# Ensure upload directory exists
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
 # Health check
 @app.route('/api/health', methods=['GET'])
 def health():
     return jsonify({'status': 'healthy'})
+
+# ========== Helper functions ==========
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+# ========== Upload endpoints ==========
+
+@app.route('/api/upload/avatar', methods=['POST'])
+@requires_auth
+def upload_avatar():
+    """Upload and process avatar image"""
+    if 'avatar' not in request.files:
+        return jsonify({'error': 'No file provided'}), 400
+
+    file = request.files['avatar']
+
+    if file.filename == '':
+        return jsonify({'error': 'No file selected'}), 400
+
+    if not allowed_file(file.filename):
+        return jsonify({'error': 'Invalid file type. Allowed: jpg, png, gif, webp'}), 400
+
+    try:
+        # Read file and check size
+        file_bytes = file.read()
+        if len(file_bytes) > MAX_FILE_SIZE:
+            return jsonify({'error': f'File too large. Maximum size is {MAX_FILE_SIZE // (1024*1024)}MB'}), 400
+
+        # Open and process image
+        image = Image.open(io.BytesIO(file_bytes))
+
+        # Convert to RGB if necessary (e.g., for PNG with transparency)
+        if image.mode in ('RGBA', 'LA', 'P'):
+            background = Image.new('RGB', image.size, (255, 255, 255))
+            if image.mode == 'P':
+                image = image.convert('RGBA')
+            background.paste(image, mask=image.split()[-1] if image.mode in ('RGBA', 'LA') else None)
+            image = background
+
+        # Resize image to standard size
+        image.thumbnail(AVATAR_SIZE, Image.Resampling.LANCZOS)
+
+        # Create square image (crop to center if needed)
+        width, height = image.size
+        if width != height:
+            size = min(width, height)
+            left = (width - size) // 2
+            top = (height - size) // 2
+            image = image.crop((left, top, left + size, top + size))
+            image = image.resize(AVATAR_SIZE, Image.Resampling.LANCZOS)
+
+        # Generate unique filename
+        file_extension = file.filename.rsplit('.', 1)[1].lower()
+        unique_filename = f"{uuid.uuid4()}.{file_extension}"
+        file_path = os.path.join(UPLOAD_FOLDER, unique_filename)
+
+        # Save optimized image
+        image.save(file_path, quality=85, optimize=True)
+
+        # Return URL path
+        avatar_url = f"http://localhost:5001/uploads/avatars/{unique_filename}"
+        return jsonify({'avatar_url': avatar_url}), 200
+
+    except Exception as e:
+        print(f"Error processing avatar: {e}")
+        return jsonify({'error': 'Failed to process image'}), 500
+
+@app.route('/uploads/avatars/<filename>')
+def serve_avatar(filename):
+    """Serve uploaded avatar images"""
+    try:
+        return send_from_directory('uploads/avatars', filename)
+    except Exception as e:
+        return jsonify({'error': 'File not found'}), 404
+
+# ========== Auth0 endpoints ==========
+
+@app.route('/api/auth/callback', methods=['POST'])
+@requires_auth
+def auth_callback():
+    """Handle Auth0 login/signup callback"""
+    auth0_user = request.auth0_user
+    print(f"Auth0 user payload: {auth0_user}")
+
+    auth0_id = auth0_user.get('sub')
+    # Email might be in different fields depending on Auth0 configuration
+    email = auth0_user.get('email') or auth0_user.get('https://example.com/email') or auth0_user.get('name')
+
+    if not auth0_id:
+        return jsonify({'error': 'Missing Auth0 user ID'}), 400
+
+    if not email:
+        print(f"Warning: No email found in token, using Auth0 ID as fallback")
+        email = f"{auth0_id}@auth0.local"
+
+    # Check if user exists
+    user = db.get_user_by_auth0_id(auth0_id)
+
+    if user:
+        # Existing user - return their data
+        # Get additional counts
+        thoughts = db.get_user_thoughts(user['id'])
+        user['thoughts_count'] = len(thoughts)
+        thoughtmates = db.get_thoughtmates(user['id'])
+        user['thoughtmates_count'] = len(thoughtmates)
+        follow_counts = db.get_follow_counts(user['id'])
+        user.update(follow_counts)
+
+        return jsonify({
+            'user': user,
+            'is_new_user': False
+        })
+    else:
+        # New user - create account with temporary username
+        user_id = db.create_user_with_auth0(auth0_id, email)
+        user = db.get_user(user_id)
+
+        # Add counts
+        user['thoughts_count'] = 0
+        user['thoughtmates_count'] = 0
+        user['following_count'] = 0
+        user['followers_count'] = 0
+
+        return jsonify({
+            'user': user,
+            'is_new_user': True
+        }), 201
+
+@app.route('/api/auth/me', methods=['GET'])
+@requires_auth
+def get_current_user():
+    """Get current authenticated user"""
+    auth0_user = request.auth0_user
+    auth0_id = auth0_user.get('sub')
+
+    user = db.get_user_by_auth0_id(auth0_id)
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+
+    # Get additional counts
+    thoughts = db.get_user_thoughts(user['id'])
+    user['thoughts_count'] = len(thoughts)
+    thoughtmates = db.get_thoughtmates(user['id'])
+    user['thoughtmates_count'] = len(thoughtmates)
+    follow_counts = db.get_follow_counts(user['id'])
+    user.update(follow_counts)
+
+    return jsonify(user)
+
+@app.route('/api/auth/profile', methods=['PUT'])
+@requires_auth
+def complete_profile():
+    """Complete user profile setup"""
+    auth0_user = request.auth0_user
+    auth0_id = auth0_user.get('sub')
+
+    user = db.get_user_by_auth0_id(auth0_id)
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+
+    data = request.json
+    username = data.get('username')
+    avatar_url = data.get('avatar_url')
+    bio = data.get('bio', '')
+
+    if not username:
+        return jsonify({'error': 'Username is required'}), 400
+
+    # Check if username is taken (by someone else)
+    existing_user = db.get_user_by_username(username)
+    if existing_user and existing_user['id'] != user['id']:
+        return jsonify({'error': 'Username already taken'}), 409
+
+    # Update profile
+    db.update_user_profile(user['id'], username, avatar_url, bio)
+
+    # Get updated user
+    updated_user = db.get_user(user['id'])
+    thoughts = db.get_user_thoughts(user['id'])
+    updated_user['thoughts_count'] = len(thoughts)
+    thoughtmates = db.get_thoughtmates(user['id'])
+    updated_user['thoughtmates_count'] = len(thoughtmates)
+    follow_counts = db.get_follow_counts(user['id'])
+    updated_user.update(follow_counts)
+
+    return jsonify(updated_user)
 
 # ========== User endpoints ==========
 

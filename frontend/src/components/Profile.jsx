@@ -1,16 +1,18 @@
 import { useState, useEffect, useContext } from 'react'
-import { motion } from 'framer-motion'
-import { UserCircle, FileText, Bell, Settings, LogOut, Users, Sparkles, Edit2, Heart, MessageCircle, Trash2 } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { UserCircle, FileText, Bell, Settings, LogOut, Users, Sparkles, Edit2, Heart, MessageCircle, Trash2, Upload, Image, X } from 'lucide-react'
 import axios from 'axios'
 import { UserContext } from '../context/UserContext'
 import { useSocket } from '../context/SocketContext'
+import { useAuth0 } from '@auth0/auth0-react'
 import LoginPrompt from './LoginPrompt'
 
 const API_BASE = 'http://localhost:5001/api'
 
 const Profile = () => {
-  const { currentUser, logout, loading: userLoading, setCurrentUser } = useContext(UserContext)
+  const { currentUser, logout, loading: userLoading, setCurrentUser, refreshUser } = useContext(UserContext)
   const { socket } = useSocket()
+  const { getAccessTokenSilently } = useAuth0()
   const [thoughtmates, setThoughtmates] = useState([])
   const [myThoughts, setMyThoughts] = useState([])
   const [loading, setLoading] = useState(true)
@@ -18,6 +20,13 @@ const Profile = () => {
   const [bio, setBio] = useState('')
   const [activeSection, setActiveSection] = useState('thoughts')
   const [showPersonalInfo, setShowPersonalInfo] = useState(false)
+  const [showAvatarModal, setShowAvatarModal] = useState(false)
+  const [avatarMode, setAvatarMode] = useState('upload')
+  const [selectedFile, setSelectedFile] = useState(null)
+  const [previewUrl, setPreviewUrl] = useState('')
+  const [avatarUrl, setAvatarUrl] = useState('')
+  const [uploadError, setUploadError] = useState('')
+  const [uploadLoading, setUploadLoading] = useState(false)
 
   useEffect(() => {
     if (currentUser) {
@@ -123,6 +132,102 @@ const Profile = () => {
     }
   }
 
+  const handleFileSelect = (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+
+    // Validate file type
+    const validTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp']
+    if (!validTypes.includes(file.type)) {
+      setUploadError('Please select a valid image file (PNG, JPG, GIF, or WebP)')
+      return
+    }
+
+    // Validate file size (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setUploadError('File size must be less than 5MB')
+      return
+    }
+
+    setUploadError('')
+    setSelectedFile(file)
+
+    // Create preview
+    const reader = new FileReader()
+    reader.onloadend = () => {
+      setPreviewUrl(reader.result)
+    }
+    reader.readAsDataURL(file)
+  }
+
+  const handleAvatarUpdate = async () => {
+    setUploadLoading(true)
+    setUploadError('')
+
+    try {
+      const token = await getAccessTokenSilently()
+      let finalAvatarUrl = avatarUrl
+
+      // Upload file if selected
+      if (selectedFile && avatarMode === 'upload') {
+        const formData = new FormData()
+        formData.append('avatar', selectedFile)
+
+        const uploadResponse = await axios.post(
+          `${API_BASE}/upload/avatar`,
+          formData,
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'multipart/form-data'
+            }
+          }
+        )
+
+        finalAvatarUrl = uploadResponse.data.avatar_url
+      }
+
+      // Update user profile with new avatar
+      await axios.put(
+        `${API_BASE}/auth/profile`,
+        {
+          username: currentUser.username,
+          avatar_url: finalAvatarUrl,
+          bio: currentUser.bio
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      )
+
+      // Refresh user data
+      await refreshUser()
+
+      // Close modal and reset
+      setShowAvatarModal(false)
+      setSelectedFile(null)
+      setPreviewUrl('')
+      setAvatarUrl('')
+    } catch (error) {
+      console.error('Avatar update error:', error)
+      setUploadError(error.response?.data?.error || 'Failed to update avatar')
+    } finally {
+      setUploadLoading(false)
+    }
+  }
+
+  const getAvatarPreview = () => {
+    if (avatarMode === 'upload' && previewUrl) {
+      return previewUrl
+    }
+    if (avatarMode === 'url' && avatarUrl) {
+      return avatarUrl
+    }
+    return currentUser?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${currentUser?.username}`
+  }
+
   if (userLoading) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -149,13 +254,19 @@ const Profile = () => {
           <motion.div
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
-            className="relative"
+            className="relative group"
           >
             <img
               src={currentUser.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${currentUser.username}`}
               alt={currentUser.username}
-              className="w-24 h-24 rounded-full border-4 border-dark-bg"
+              className="w-24 h-24 rounded-full border-4 border-dark-bg object-cover"
             />
+            <button
+              onClick={() => setShowAvatarModal(true)}
+              className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+            >
+              <Edit2 size={20} className="text-white" />
+            </button>
             <div className="absolute bottom-0 right-0 w-6 h-6 bg-accent-green rounded-full border-2 border-dark-bg" />
           </motion.div>
         </div>
@@ -355,6 +466,131 @@ const Profile = () => {
           </motion.button>
         </div>
       </div>
+
+      {/* Avatar Edit Modal */}
+      <AnimatePresence>
+        {showAvatarModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4"
+            onClick={() => setShowAvatarModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-dark-card rounded-2xl p-6 max-w-md w-full border border-dark-border"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xl font-bold">Update Avatar</h3>
+                <button
+                  onClick={() => setShowAvatarModal(false)}
+                  className="p-2 hover:bg-dark-hover rounded-lg transition-colors"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              {/* Avatar Preview */}
+              <div className="flex justify-center mb-6">
+                <img
+                  src={getAvatarPreview()}
+                  alt="Avatar preview"
+                  className="w-32 h-32 rounded-full border-4 border-accent-blue/30 object-cover"
+                />
+              </div>
+
+              {/* Mode Tabs */}
+              <div className="flex gap-2 mb-4">
+                <button
+                  onClick={() => setAvatarMode('upload')}
+                  className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${
+                    avatarMode === 'upload'
+                      ? 'bg-accent-blue text-white'
+                      : 'bg-dark-bg text-gray-400 hover:text-gray-300'
+                  }`}
+                >
+                  <Upload size={16} className="inline mr-2" />
+                  Upload Image
+                </button>
+                <button
+                  onClick={() => setAvatarMode('url')}
+                  className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${
+                    avatarMode === 'url'
+                      ? 'bg-accent-blue text-white'
+                      : 'bg-dark-bg text-gray-400 hover:text-gray-300'
+                  }`}
+                >
+                  <Image size={16} className="inline mr-2" />
+                  Use URL
+                </button>
+              </div>
+
+              {/* File Upload */}
+              {avatarMode === 'upload' && (
+                <div className="mb-4">
+                  <label className="block">
+                    <div className="w-full px-4 py-8 bg-dark-bg border-2 border-dashed border-dark-border rounded-xl text-center cursor-pointer hover:border-accent-blue transition-colors">
+                      <Upload size={32} className="mx-auto text-gray-400 mb-2" />
+                      <p className="text-sm text-gray-300 mb-1">
+                        {selectedFile ? selectedFile.name : 'Click to upload or drag and drop'}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        PNG, JPG, GIF or WebP (max 5MB)
+                      </p>
+                    </div>
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg,image/jpg,image/gif,image/webp"
+                      onChange={handleFileSelect}
+                      className="hidden"
+                      disabled={uploadLoading}
+                    />
+                  </label>
+                  {uploadError && (
+                    <p className="text-xs text-red-400 mt-2">{uploadError}</p>
+                  )}
+                </div>
+              )}
+
+              {/* URL Input */}
+              {avatarMode === 'url' && (
+                <div className="mb-4">
+                  <input
+                    type="url"
+                    value={avatarUrl}
+                    onChange={(e) => setAvatarUrl(e.target.value)}
+                    placeholder="https://example.com/avatar.jpg"
+                    className="w-full px-4 py-3 bg-dark-bg border border-dark-border rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-accent-blue transition-colors"
+                    disabled={uploadLoading}
+                  />
+                </div>
+              )}
+
+              {/* Actions */}
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowAvatarModal(false)}
+                  className="flex-1 py-3 bg-dark-bg text-gray-300 rounded-xl hover:bg-dark-hover transition-colors"
+                  disabled={uploadLoading}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleAvatarUpdate}
+                  disabled={uploadLoading || (avatarMode === 'upload' && !selectedFile) || (avatarMode === 'url' && !avatarUrl)}
+                  className="flex-1 py-3 bg-gradient-to-r from-accent-blue to-accent-purple text-white rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {uploadLoading ? 'Updating...' : 'Update Avatar'}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
