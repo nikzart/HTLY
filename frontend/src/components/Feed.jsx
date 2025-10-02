@@ -17,6 +17,7 @@ const Feed = () => {
   const [activeTab, setActiveTab] = useState('trending')
   const [selectedThought, setSelectedThought] = useState(null)
   const [showScrollTop, setShowScrollTop] = useState(false)
+  const [pendingThoughts, setPendingThoughts] = useState([])
   const scrollContainerRef = useRef(null)
 
   useEffect(() => {
@@ -24,6 +25,11 @@ const Feed = () => {
       fetchThoughts()
     }
   }, [currentUser?.id, activeTab])
+
+  // Clear pending thoughts when tab changes
+  useEffect(() => {
+    setPendingThoughts([])
+  }, [activeTab])
 
   // Real-time event listeners
   useEffect(() => {
@@ -60,8 +66,20 @@ const Feed = () => {
     }
 
     const handleThoughtCreated = (data) => {
-      // Add new thought to the beginning of the feed
-      setThoughts(prevThoughts => [data.thought, ...prevThoughts])
+      if (data.thought.user_id === currentUser?.id) {
+        // If current user created the thought, refetch to get similarity scores
+        fetchThoughts()
+      } else {
+        // If another user created it, add to pending thoughts
+        // This preserves scroll position for other users
+        setPendingThoughts(prev => {
+          // Check if thought already exists (avoid duplicates)
+          if (prev.some(t => t.id === data.thought.id)) {
+            return prev
+          }
+          return [data.thought, ...prev]
+        })
+      }
     }
 
     const handleThoughtDeleted = (data) => {
@@ -115,10 +133,25 @@ const Feed = () => {
       }
       const response = await axios.get(url)
       setThoughts(response.data)
+      setPendingThoughts([]) // Clear pending when fetching
     } catch (error) {
       console.error('Error fetching thoughts:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const loadPendingThoughts = () => {
+    // Add pending thoughts to the feed
+    setThoughts(prevThoughts => [...pendingThoughts.reverse(), ...prevThoughts])
+    setPendingThoughts([])
+
+    // Scroll to top smoothly to show new thoughts
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+      })
     }
   }
 
@@ -271,6 +304,30 @@ const Feed = () => {
           />
         </div>
       </div>
+
+      {/* New Thoughts Indicator */}
+      <AnimatePresence>
+        {pendingThoughts.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="fixed top-20 left-0 right-0 z-40 flex justify-center px-4"
+          >
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={loadPendingThoughts}
+              className="px-4 py-2 bg-accent-blue text-white rounded-full shadow-lg hover:bg-accent-blue/90 transition-colors flex items-center space-x-2"
+            >
+              <Sparkles size={16} />
+              <span className="text-sm font-medium">
+                {pendingThoughts.length} new thought{pendingThoughts.length > 1 ? 's' : ''}
+              </span>
+            </motion.button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Thoughts Feed - Scrollable */}
       <div

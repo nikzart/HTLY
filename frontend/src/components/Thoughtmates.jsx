@@ -3,12 +3,14 @@ import { motion } from 'framer-motion'
 import { Users, Sparkles, MessageCircle, UserPlus, Check } from 'lucide-react'
 import axios from 'axios'
 import { UserContext } from '../context/UserContext'
+import { useSocket } from '../context/SocketContext'
 import LoginPrompt from './LoginPrompt'
 
 const API_BASE = 'http://localhost:5001/api'
 
 const Thoughtmates = ({ onStartChat }) => {
   const { currentUser, loading: userLoading } = useContext(UserContext)
+  const { socket } = useSocket()
   const [thoughtmates, setThoughtmates] = useState([])
   const [loading, setLoading] = useState(true)
 
@@ -32,6 +34,25 @@ const Thoughtmates = ({ onStartChat }) => {
   useEffect(() => {
     fetchThoughtmates()
   }, [currentUser?.id])
+
+  // Listen for new thoughts to update thoughtmates
+  useEffect(() => {
+    if (!socket || !currentUser) return
+
+    const handleThoughtCreated = (data) => {
+      // Only refetch if the current user created the thought
+      // This prevents unnecessary updates when other users post
+      if (data.thought.user_id === currentUser?.id) {
+        fetchThoughtmates()
+      }
+    }
+
+    socket.on('thought_created', handleThoughtCreated)
+
+    return () => {
+      socket.off('thought_created', handleThoughtCreated)
+    }
+  }, [socket, currentUser])
 
   if (userLoading) {
     return (
