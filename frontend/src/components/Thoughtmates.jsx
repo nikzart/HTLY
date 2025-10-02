@@ -6,7 +6,7 @@ import { UserContext } from '../context/UserContext'
 import { useSocket } from '../context/SocketContext'
 import LoginPrompt from './LoginPrompt'
 
-const API_BASE = 'http://localhost:5001/api'
+const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5001/api'
 
 const Thoughtmates = ({ onStartChat }) => {
   const { currentUser, loading: userLoading } = useContext(UserContext)

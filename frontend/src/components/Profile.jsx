@@ -7,7 +7,7 @@ import { useSocket } from '../context/SocketContext'
 import { useAuth0 } from '@auth0/auth0-react'
 import LoginPrompt from './LoginPrompt'
 
-const API_BASE = 'http://localhost:5001/api'
+const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5001/api'
 
 const Profile = () => {
   const { currentUser, logout, loading: userLoading, setCurrentUser, refreshUser } = useContext(UserContext)

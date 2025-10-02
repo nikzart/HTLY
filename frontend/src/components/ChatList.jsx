@@ -5,7 +5,7 @@ import axios from 'axios'
 import { UserContext } from '../context/UserContext'
 import { useSocket } from '../context/SocketContext'
 
-const API_BASE = 'http://localhost:5001/api'
+const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5001/api'
 
 const ChatList = ({ onSelectChat }) => {
   const { currentUser } = useContext(UserContext)

@@ -4,7 +4,7 @@ import { X, Sparkles, Send } from 'lucide-react'
 import axios from 'axios'
 import { UserContext } from '../context/UserContext'
 
-const API_BASE = 'http://localhost:5001/api'
+const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5001/api'
 
 const ThoughtComposer = ({ onClose, onSuccess }) => {
   const { currentUser } = useContext(UserContext)

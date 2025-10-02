@@ -4,7 +4,7 @@ import { X, Send, Sparkles } from 'lucide-react'
 import axios from 'axios'
 import { useSocket } from '../context/SocketContext'
 
-const API_BASE = 'http://localhost:5001/api'
+const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5001/api'
 
 const CommentsModal = ({ thought, currentUser, onClose, onCommentAdded }) => {
   const { socket } = useSocket()
