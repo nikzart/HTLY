@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useContext } from 'react'
 import { motion } from 'framer-motion'
-import { ArrowLeft, Send, Sparkles } from 'lucide-react'
+import { ArrowLeft, Send, Sparkles, Trash2 } from 'lucide-react'
 import axios from 'axios'
 import { UserContext } from '../context/UserContext'
 import { useSocket } from '../context/SocketContext'
@@ -129,6 +129,24 @@ const ChatWindow = ({ conversation, onBack }) => {
     }
   }
 
+  const handleClearChat = async () => {
+    if (!window.confirm('Are you sure you want to clear all messages in this chat? This will remove the conversation for both you and the other person. This action cannot be undone.')) {
+      return
+    }
+
+    try {
+      await axios.delete(`${API_BASE}/conversations/${conversation.conversation_id}/messages`, {
+        data: { user_id: currentUser.id }
+      })
+
+      // Clear messages from local state
+      setMessages([])
+    } catch (error) {
+      console.error('Error clearing chat:', error)
+      alert('Failed to clear chat')
+    }
+  }
+
   return (
     <div className="flex flex-col h-screen">
       {/* Header - Fixed */}
@@ -151,6 +169,15 @@ const ChatWindow = ({ conversation, onBack }) => {
             <h2 className="font-semibold">{conversation.other_user_username}</h2>
             <p className="text-xs text-gray-400">Active now</p>
           </div>
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={handleClearChat}
+            className="p-2 hover:bg-red-500/10 text-gray-400 hover:text-red-400 rounded-full transition-colors"
+            title="Clear chat"
+          >
+            <Trash2 size={20} />
+          </motion.button>
         </div>
       </div>
 

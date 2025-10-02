@@ -190,6 +190,26 @@ def get_thought_route(thought_id):
 
     return jsonify(thought)
 
+@app.route('/api/thoughts/<int:thought_id>', methods=['DELETE'])
+def delete_thought_route(thought_id):
+    data = request.json
+    user_id = data.get('user_id')
+
+    if not user_id:
+        return jsonify({'error': 'user_id is required'}), 400
+
+    deleted = db.delete_thought(thought_id, user_id)
+    if not deleted:
+        return jsonify({'error': 'Thought not found or not authorized'}), 404
+
+    # Broadcast deletion to all clients
+    socketio.emit('thought_deleted', {
+        'thought_id': thought_id,
+        'user_id': user_id
+    })
+
+    return jsonify({'success': True, 'message': 'Thought deleted successfully'})
+
 @app.route('/api/users/<int:user_id>/thoughts', methods=['GET'])
 def get_user_thoughts(user_id):
     thoughts = db.get_user_thoughts(user_id)
@@ -199,6 +219,28 @@ def get_user_thoughts(user_id):
         thought.pop('embedding', None)
 
     return jsonify(thoughts)
+
+@app.route('/api/users/<int:user_id>/thoughts', methods=['DELETE'])
+def delete_all_user_thoughts_route(user_id):
+    data = request.json
+    requesting_user_id = data.get('user_id')
+
+    if not requesting_user_id:
+        return jsonify({'error': 'user_id is required'}), 400
+
+    # Verify the requesting user is the same as the target user
+    if requesting_user_id != user_id:
+        return jsonify({'error': 'Not authorized to delete thoughts for this user'}), 403
+
+    count = db.delete_all_user_thoughts(user_id)
+
+    # Broadcast bulk deletion to all clients
+    socketio.emit('thoughts_bulk_deleted', {
+        'user_id': user_id,
+        'count': count
+    })
+
+    return jsonify({'success': True, 'message': f'Deleted {count} thoughts', 'count': count})
 
 # ========== Like endpoints ==========
 
@@ -464,6 +506,30 @@ def send_message(conversation_id):
         })
 
     return jsonify(message), 201
+
+@app.route('/api/conversations/<int:conversation_id>/messages', methods=['DELETE'])
+def clear_conversation_messages(conversation_id):
+    data = request.json
+    user_id = data.get('user_id')
+
+    if not user_id:
+        return jsonify({'error': 'user_id is required'}), 400
+
+    # Verify user is part of this conversation
+    conn = db.get_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        'SELECT * FROM conversations WHERE id = ? AND (user1_id = ? OR user2_id = ?)',
+        (conversation_id, user_id, user_id)
+    )
+    conversation = cursor.fetchone()
+    conn.close()
+
+    if not conversation:
+        return jsonify({'error': 'Conversation not found or not authorized'}), 404
+
+    count = db.clear_conversation(conversation_id)
+    return jsonify({'success': True, 'message': f'Cleared {count} messages', 'count': count})
 
 @app.route('/api/users/<int:user_id>/unread-count', methods=['GET'])
 def get_unread_count(user_id):

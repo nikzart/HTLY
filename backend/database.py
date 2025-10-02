@@ -403,6 +403,30 @@ class Database:
         conn.close()
         return deleted
 
+    # Thought deletion
+    def delete_thought(self, thought_id: int, user_id: int) -> bool:
+        """Delete a thought if it belongs to the user. Cascades will handle likes/comments."""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            'DELETE FROM thoughts WHERE id = ? AND user_id = ?',
+            (thought_id, user_id)
+        )
+        deleted = cursor.rowcount > 0
+        conn.commit()
+        conn.close()
+        return deleted
+
+    def delete_all_user_thoughts(self, user_id: int) -> int:
+        """Delete all thoughts for a user. Returns count of deleted thoughts."""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute('DELETE FROM thoughts WHERE user_id = ?', (user_id,))
+        count = cursor.rowcount
+        conn.commit()
+        conn.close()
+        return count
+
     # Follow operations
     def follow_user(self, follower_id: int, following_id: int):
         if follower_id == following_id:
@@ -680,3 +704,13 @@ class Database:
         result = cursor.fetchone()
         conn.close()
         return result['count']
+
+    def clear_conversation(self, conversation_id: int) -> int:
+        """Clear all messages in a conversation. Returns count of deleted messages."""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute('DELETE FROM messages WHERE conversation_id = ?', (conversation_id,))
+        count = cursor.rowcount
+        conn.commit()
+        conn.close()
+        return count

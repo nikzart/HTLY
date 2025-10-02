@@ -1,6 +1,6 @@
 import { useState, useEffect, useContext } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Search, Heart, MessageCircle, Share2, Sparkles, Bookmark } from 'lucide-react'
+import { Search, Heart, MessageCircle, Share2, Sparkles, Bookmark, Trash2 } from 'lucide-react'
 import axios from 'axios'
 import { UserContext } from '../context/UserContext'
 import { useSocket } from '../context/SocketContext'
@@ -58,16 +58,30 @@ const Feed = () => {
       setThoughts(prevThoughts => [data.thought, ...prevThoughts])
     }
 
+    const handleThoughtDeleted = (data) => {
+      // Remove deleted thought from feed
+      setThoughts(prevThoughts => prevThoughts.filter(t => t.id !== data.thought_id))
+    }
+
+    const handleThoughtsBulkDeleted = (data) => {
+      // Remove all thoughts from the specified user
+      setThoughts(prevThoughts => prevThoughts.filter(t => t.user_id !== data.user_id))
+    }
+
     socket.on('thought_liked', handleThoughtLiked)
     socket.on('thought_unliked', handleThoughtUnliked)
     socket.on('comment_posted', handleCommentPosted)
     socket.on('thought_created', handleThoughtCreated)
+    socket.on('thought_deleted', handleThoughtDeleted)
+    socket.on('thoughts_bulk_deleted', handleThoughtsBulkDeleted)
 
     return () => {
       socket.off('thought_liked', handleThoughtLiked)
       socket.off('thought_unliked', handleThoughtUnliked)
       socket.off('comment_posted', handleCommentPosted)
       socket.off('thought_created', handleThoughtCreated)
+      socket.off('thought_deleted', handleThoughtDeleted)
+      socket.off('thoughts_bulk_deleted', handleThoughtsBulkDeleted)
     }
   }, [socket])
 
@@ -145,6 +159,24 @@ const Feed = () => {
       }))
     } catch (error) {
       console.error('Error toggling save:', error)
+    }
+  }
+
+  const handleDelete = async (thoughtId) => {
+    if (!window.confirm('Are you sure you want to delete this thought? This action cannot be undone.')) {
+      return
+    }
+
+    try {
+      await axios.delete(`${API_BASE}/thoughts/${thoughtId}`, {
+        data: { user_id: currentUser.id }
+      })
+
+      // Remove from local state
+      setThoughts(thoughts.filter(t => t.id !== thoughtId))
+    } catch (error) {
+      console.error('Error deleting thought:', error)
+      alert('Failed to delete thought')
     }
   }
 
@@ -260,6 +292,7 @@ const Feed = () => {
                 onLike={handleLike}
                 onSave={handleSave}
                 onCommentClick={setSelectedThought}
+                onDelete={handleDelete}
               />
             ))}
           </AnimatePresence>
@@ -299,7 +332,7 @@ const TabButton = ({ label, isActive, onClick }) => (
   </button>
 )
 
-const ThoughtCard = ({ thought, index, currentUser, onLike, onSave, onCommentClick }) => {
+const ThoughtCard = ({ thought, index, currentUser, onLike, onSave, onCommentClick, onDelete }) => {
   const similarityScore = thought.similarity_score
   const isLiked = thought.is_liked || false
   const isSaved = thought.is_saved || false
@@ -382,6 +415,17 @@ const ThoughtCard = ({ thought, index, currentUser, onLike, onSave, onCommentCli
         >
           <Share2 size={18} />
         </motion.button>
+
+        {/* Delete button - only visible for own thoughts */}
+        {currentUser && thought.user_id === currentUser.id && (
+          <motion.button
+            whileTap={{ scale: 0.9 }}
+            onClick={() => onDelete(thought.id)}
+            className="flex items-center space-x-2 text-gray-400 hover:text-red-400 transition-colors ml-auto"
+          >
+            <Trash2 size={18} />
+          </motion.button>
+        )}
       </div>
     </motion.div>
   )

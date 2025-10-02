@@ -1,20 +1,23 @@
 import { useState, useEffect, useContext } from 'react'
 import { motion } from 'framer-motion'
-import { UserCircle, FileText, Bell, Settings, LogOut, Users, Sparkles, Edit2, Heart, MessageCircle } from 'lucide-react'
+import { UserCircle, FileText, Bell, Settings, LogOut, Users, Sparkles, Edit2, Heart, MessageCircle, Trash2 } from 'lucide-react'
 import axios from 'axios'
 import { UserContext } from '../context/UserContext'
+import { useSocket } from '../context/SocketContext'
 import LoginPrompt from './LoginPrompt'
 
 const API_BASE = 'http://localhost:5001/api'
 
 const Profile = () => {
   const { currentUser, logout, loading: userLoading, setCurrentUser } = useContext(UserContext)
+  const { socket } = useSocket()
   const [thoughtmates, setThoughtmates] = useState([])
   const [myThoughts, setMyThoughts] = useState([])
   const [loading, setLoading] = useState(true)
   const [editingBio, setEditingBio] = useState(false)
   const [bio, setBio] = useState('')
   const [activeSection, setActiveSection] = useState('thoughts')
+  const [showPersonalInfo, setShowPersonalInfo] = useState(false)
 
   useEffect(() => {
     if (currentUser) {
@@ -22,6 +25,31 @@ const Profile = () => {
       setBio(currentUser.bio || '')
     }
   }, [currentUser])
+
+  // Listen for real-time thought deletions
+  useEffect(() => {
+    if (!socket || !currentUser) return
+
+    const handleThoughtDeleted = (data) => {
+      // Only update if viewing own profile
+      setMyThoughts(prevThoughts => prevThoughts.filter(t => t.id !== data.thought_id))
+    }
+
+    const handleThoughtsBulkDeleted = (data) => {
+      // Only clear thoughts if they belong to current user
+      if (data.user_id === currentUser.id) {
+        setMyThoughts([])
+      }
+    }
+
+    socket.on('thought_deleted', handleThoughtDeleted)
+    socket.on('thoughts_bulk_deleted', handleThoughtsBulkDeleted)
+
+    return () => {
+      socket.off('thought_deleted', handleThoughtDeleted)
+      socket.off('thoughts_bulk_deleted', handleThoughtsBulkDeleted)
+    }
+  }, [socket, currentUser])
 
   const fetchData = async () => {
     try {
@@ -45,6 +73,52 @@ const Profile = () => {
       setEditingBio(false)
     } catch (error) {
       console.error('Error updating bio:', error)
+    }
+  }
+
+  const handleDeleteThought = async (thoughtId) => {
+    if (!window.confirm('Are you sure you want to delete this thought? This action cannot be undone.')) {
+      return
+    }
+
+    try {
+      await axios.delete(`${API_BASE}/thoughts/${thoughtId}`, {
+        data: { user_id: currentUser.id }
+      })
+
+      // Remove from local state
+      setMyThoughts(myThoughts.filter(t => t.id !== thoughtId))
+    } catch (error) {
+      console.error('Error deleting thought:', error)
+      alert('Failed to delete thought')
+    }
+  }
+
+  const handleDeleteAllThoughts = async () => {
+    if (!window.confirm(`⚠️ WARNING: This will permanently delete ALL ${myThoughts.length} of your thoughts. This action cannot be undone. Are you absolutely sure?`)) {
+      return
+    }
+
+    // Double confirmation for safety
+    if (!window.confirm('This is your final warning. Type "DELETE ALL" in the next dialog to confirm.')) {
+      return
+    }
+
+    try {
+      const response = await axios.delete(`${API_BASE}/users/${currentUser.id}/thoughts`, {
+        data: { user_id: currentUser.id }
+      })
+
+      // Clear from local state
+      setMyThoughts([])
+      alert(`Successfully deleted ${response.data.count} thoughts`)
+
+      // Switch back to thoughts tab to show empty state
+      setActiveSection('thoughts')
+      setShowPersonalInfo(false)
+    } catch (error) {
+      console.error('Error deleting all thoughts:', error)
+      alert('Failed to delete thoughts')
     }
   }
 
@@ -198,18 +272,72 @@ const Profile = () => {
               </div>
             ) : (
               myThoughts.map((thought) => (
-                <ThoughtItem key={thought.id} thought={thought} />
+                <ThoughtItem key={thought.id} thought={thought} onDelete={handleDeleteThought} />
               ))
             )}
           </div>
         )}
 
-        {activeSection === 'settings' && (
+        {activeSection === 'settings' && !showPersonalInfo && (
           <div className="space-y-2">
-            <MenuItem icon={UserCircle} label="Personal information" />
+            <MenuItem icon={UserCircle} label="Personal information" onClick={() => setShowPersonalInfo(true)} />
             <MenuItem icon={Bell} label="Notification settings" />
             <MenuItem icon={Settings} label="App settings" />
             <MenuItem icon={FileText} label="Privacy policy" />
+          </div>
+        )}
+
+        {activeSection === 'settings' && showPersonalInfo && (
+          <div className="space-y-4">
+            {/* Back button */}
+            <motion.button
+              whileHover={{ x: -4 }}
+              onClick={() => setShowPersonalInfo(false)}
+              className="flex items-center space-x-2 text-gray-400 hover:text-white transition-colors"
+            >
+              <span>←</span>
+              <span className="text-sm">Back to Settings</span>
+            </motion.button>
+
+            {/* Personal Information Section */}
+            <div className="bg-dark-card rounded-xl border border-dark-border p-4">
+              <h3 className="text-lg font-semibold mb-2">Personal Information</h3>
+              <p className="text-sm text-gray-400 mb-4">Manage your account and data</p>
+
+              <div className="space-y-2">
+                <div className="p-3 bg-dark-bg rounded-lg">
+                  <p className="text-xs text-gray-400">Username</p>
+                  <p className="text-sm font-medium">{currentUser.username}</p>
+                </div>
+                <div className="p-3 bg-dark-bg rounded-lg">
+                  <p className="text-xs text-gray-400">Total Thoughts</p>
+                  <p className="text-sm font-medium">{myThoughts.length}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Danger Zone */}
+            <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4">
+              <h3 className="text-lg font-semibold text-red-400 mb-2">⚠️ Danger Zone</h3>
+              <p className="text-sm text-gray-400 mb-4">
+                Irreversible actions that will permanently delete your data
+              </p>
+
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={handleDeleteAllThoughts}
+                className="w-full flex items-center justify-center space-x-2 p-3 bg-red-500/20 text-red-400 rounded-lg border border-red-500/30 hover:bg-red-500/30 transition-colors"
+                disabled={myThoughts.length === 0}
+              >
+                <Trash2 size={18} />
+                <span className="font-medium">Delete All Thoughts ({myThoughts.length})</span>
+              </motion.button>
+
+              {myThoughts.length === 0 && (
+                <p className="text-xs text-gray-500 mt-2 text-center">No thoughts to delete</p>
+              )}
+            </div>
           </div>
         )}
 
@@ -230,9 +358,10 @@ const Profile = () => {
   )
 }
 
-const MenuItem = ({ icon: Icon, label, badge }) => (
+const MenuItem = ({ icon: Icon, label, badge, onClick }) => (
   <motion.button
     whileHover={{ x: 4 }}
+    onClick={onClick}
     className="w-full flex items-center justify-between p-4 bg-dark-card rounded-xl border border-dark-border hover:border-accent-blue/30 transition-colors"
   >
     <div className="flex items-center space-x-3">
@@ -250,13 +379,22 @@ const MenuItem = ({ icon: Icon, label, badge }) => (
   </motion.button>
 )
 
-const ThoughtItem = ({ thought }) => (
+const ThoughtItem = ({ thought, onDelete }) => (
   <motion.div
     initial={{ opacity: 0, y: 20 }}
     animate={{ opacity: 1, y: 0 }}
     className="bg-dark-card rounded-xl border border-dark-border p-4"
   >
-    <p className="text-white mb-3 leading-relaxed">{thought.content}</p>
+    <div className="flex items-start justify-between mb-3">
+      <p className="text-white leading-relaxed flex-1">{thought.content}</p>
+      <motion.button
+        whileTap={{ scale: 0.9 }}
+        onClick={() => onDelete(thought.id)}
+        className="ml-3 p-2 text-gray-400 hover:text-red-400 transition-colors"
+      >
+        <Trash2 size={16} />
+      </motion.button>
+    </div>
     <div className="flex items-center justify-between text-sm">
       <div className="flex items-center space-x-4 text-gray-400">
         <div className="flex items-center space-x-1">
