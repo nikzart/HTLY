@@ -112,7 +112,8 @@ const ChatList = ({ onSelectChat }) => {
                 conversation_id: conversation.id,
                 other_user_id: conversation.other_user_id,
                 other_user_username: conversation.other_username,
-                other_user_avatar: conversation.other_avatar_url
+                other_user_avatar: conversation.other_avatar_url,
+                unread_count: conversation.unread_count || 0
               })}
             />
           ))

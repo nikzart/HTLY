@@ -161,7 +161,8 @@ const ThoughtmateCard = ({ thoughtmate, index, onStartChat }) => {
           conversation_id: response.data.conversation_id,
           other_user_id: thoughtmate.id,
           other_user_username: thoughtmate.username,
-          other_user_avatar: thoughtmate.avatar_url
+          other_user_avatar: thoughtmate.avatar_url,
+          unread_count: 0  // New conversation or existing, we'll open it fresh
         })
       }
     } catch (error) {

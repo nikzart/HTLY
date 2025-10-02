@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useContext } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import Feed from './components/Feed'
 import Profile from './components/Profile'
@@ -7,8 +7,8 @@ import ChatList from './components/ChatList'
 import ChatWindow from './components/ChatWindow'
 import BottomNav from './components/BottomNav'
 import ThoughtComposer from './components/ThoughtComposer'
-import { UserProvider } from './context/UserContext'
-import { SocketProvider } from './context/SocketContext'
+import { UserProvider, UserContext } from './context/UserContext'
+import { SocketProvider, useSocket } from './context/SocketContext'
 
 const pageVariants = {
   initial: (direction) => ({
@@ -33,14 +33,57 @@ const pageVariants = {
   })
 }
 
-function App() {
+function AppContent() {
+  const { currentUser } = useContext(UserContext)
+  const { socket } = useSocket()
   const [currentView, setCurrentView] = useState('feed')
   const [selectedConversation, setSelectedConversation] = useState(null)
   const [direction, setDirection] = useState(0)
   const [prevView, setPrevView] = useState('feed')
   const [showComposer, setShowComposer] = useState(false)
+  const [unreadCount, setUnreadCount] = useState(0)
 
   const views = ['feed', 'thoughtmates', 'messages', 'profile']
+
+  // Fetch initial unread count from conversations
+  useEffect(() => {
+    if (!currentUser) return
+
+    const fetchUnreadCount = async () => {
+      try {
+        const response = await fetch(`http://localhost:5001/api/users/${currentUser.id}/conversations`)
+        const conversations = await response.json()
+        const totalUnread = conversations.reduce((sum, conv) => sum + (conv.unread_count || 0), 0)
+        setUnreadCount(totalUnread)
+      } catch (error) {
+        console.error('Error fetching unread count:', error)
+      }
+    }
+
+    fetchUnreadCount()
+  }, [currentUser])
+
+  // Listen for new messages and update unread count
+  useEffect(() => {
+    if (!socket || !currentUser) return
+
+    const handleMessageSent = (data) => {
+      // Only increment if message is not from current user and not in currently open conversation
+      if (data.message.sender_id !== currentUser.id) {
+        // If we're in messages view and viewing this conversation, don't increment
+        if (currentView === 'messages' && selectedConversation?.conversation_id === data.conversation_id) {
+          return
+        }
+        setUnreadCount(prev => prev + 1)
+      }
+    }
+
+    socket.on('message_sent', handleMessageSent)
+
+    return () => {
+      socket.off('message_sent', handleMessageSent)
+    }
+  }, [socket, currentUser, currentView, selectedConversation])
 
   const handleViewChange = (newView) => {
     const currentIndex = views.indexOf(currentView)
@@ -52,6 +95,10 @@ function App() {
 
   const handleSelectChat = (conversation) => {
     setSelectedConversation(conversation)
+    // Decrement unread count when opening a conversation with unread messages
+    if (conversation.unread_count > 0) {
+      setUnreadCount(prev => Math.max(0, prev - conversation.unread_count))
+    }
   }
 
   const handleBackToList = () => {
@@ -61,6 +108,10 @@ function App() {
   const handleStartChat = (conversationData) => {
     setSelectedConversation(conversationData)
     handleViewChange('messages')
+    // Decrement unread count if this conversation has unread messages
+    if (conversationData.unread_count > 0) {
+      setUnreadCount(prev => Math.max(0, prev - conversationData.unread_count))
+    }
   }
 
   const handleThoughtPosted = () => {
@@ -72,9 +123,7 @@ function App() {
   }
 
   return (
-    <UserProvider>
-      <SocketProvider>
-        <div className="min-h-screen bg-dark-bg text-white overflow-hidden">
+    <div className="min-h-screen bg-dark-bg text-white overflow-hidden">
           <div className="max-w-md mx-auto">
             <AnimatePresence mode="wait" initial={false} custom={direction}>
               {currentView === 'feed' && (
@@ -138,18 +187,27 @@ function App() {
             currentView={currentView}
             setCurrentView={handleViewChange}
             onShareThought={() => setShowComposer(true)}
+            unreadCount={unreadCount}
           />
-        </div>
 
-        {/* Global Thought Composer - Available from any page */}
-        <AnimatePresence>
-          {showComposer && (
-            <ThoughtComposer
-              onClose={() => setShowComposer(false)}
-              onSuccess={handleThoughtPosted}
-            />
-          )}
-        </AnimatePresence>
+          {/* Global Thought Composer - Available from any page */}
+          <AnimatePresence>
+            {showComposer && (
+              <ThoughtComposer
+                onClose={() => setShowComposer(false)}
+                onSuccess={handleThoughtPosted}
+              />
+            )}
+          </AnimatePresence>
+        </div>
+  )
+}
+
+function App() {
+  return (
+    <UserProvider>
+      <SocketProvider>
+        <AppContent />
       </SocketProvider>
     </UserProvider>
   )

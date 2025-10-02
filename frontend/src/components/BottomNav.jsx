@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion'
 import { Home, Users, MessageCircle, User, Sparkles } from 'lucide-react'
 
-const BottomNav = ({ currentView, setCurrentView, onShareThought }) => {
+const BottomNav = ({ currentView, setCurrentView, onShareThought, unreadCount = 0 }) => {
   const navItems = [
     { id: 'feed', icon: Home, label: 'Home' },
     { id: 'thoughtmates', icon: Users, label: 'Mates' },
@@ -68,12 +68,24 @@ const BottomNav = ({ currentView, setCurrentView, onShareThought }) => {
                       <span className="text-sm font-semibold">{item.label}</span>
                     </motion.div>
                   ) : (
-                    <div className="p-2">
+                    <div className="p-2 relative">
                       <Icon
                         size={22}
                         className="text-gray-400"
                         strokeWidth={2}
                       />
+                      {/* Show badge on messages icon */}
+                      {item.id === 'messages' && unreadCount > 0 && (
+                        <motion.div
+                          initial={{ scale: 0 }}
+                          animate={{ scale: 1 }}
+                          className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center"
+                        >
+                          <span className="text-xs font-bold text-white">
+                            {unreadCount > 9 ? '9+' : unreadCount}
+                          </span>
+                        </motion.div>
+                      )}
                     </div>
                   )}
                 </motion.button>
