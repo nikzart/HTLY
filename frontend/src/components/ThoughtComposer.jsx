@@ -35,7 +35,7 @@ const ThoughtComposer = ({ onClose, onSuccess }) => {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-end md:items-center justify-center"
+      className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[60] flex items-end md:items-center justify-center"
       onClick={onClose}
     >
       <motion.div
@@ -44,7 +44,7 @@ const ThoughtComposer = ({ onClose, onSuccess }) => {
         exit={{ y: '100%', opacity: 0 }}
         transition={{ type: 'spring', damping: 25 }}
         onClick={(e) => e.stopPropagation()}
-        className="bg-dark-card w-full max-w-md rounded-t-3xl md:rounded-3xl border border-dark-border p-6"
+        className="bg-dark-card w-full max-w-md rounded-3xl border border-dark-border p-6 m-4"
       >
         {/* Header */}
         <div className="flex items-center justify-between mb-6">

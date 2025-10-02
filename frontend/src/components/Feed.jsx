@@ -4,13 +4,12 @@ import { Search, Heart, MessageCircle, Share2, Sparkles, Bookmark } from 'lucide
 import axios from 'axios'
 import { UserContext } from '../context/UserContext'
 import { useSocket } from '../context/SocketContext'
-import ThoughtComposer from './ThoughtComposer'
 import LoginPrompt from './LoginPrompt'
 import CommentsModal from './CommentsModal'
 
 const API_BASE = 'http://localhost:5001/api'
 
-const Feed = ({ showComposer = false, setShowComposer = () => {} }) => {
+const Feed = () => {
   const { currentUser, loading: userLoading } = useContext(UserContext)
   const { socket } = useSocket()
   const [thoughts, setThoughts] = useState([])
@@ -105,7 +104,6 @@ const Feed = ({ showComposer = false, setShowComposer = () => {} }) => {
 
   const handleNewThought = () => {
     fetchThoughts()
-    setShowComposer(false)
   }
 
   const handleLike = async (thoughtId, isLiked) => {
@@ -227,18 +225,9 @@ const Feed = ({ showComposer = false, setShowComposer = () => {} }) => {
               </div>
               <div className="flex-1">
                 <h3 className="font-semibold text-white mb-1">Share your thoughts</h3>
-                <p className="text-sm text-gray-400 mb-3">
-                  Post what's on your mind and find people who think like you
+                <p className="text-sm text-gray-400">
+                  Post what's on your mind and find people who think like you. Click the Share button below!
                 </p>
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => setShowComposer(true)}
-                  className="px-4 py-2 bg-accent-blue text-white rounded-full text-sm font-medium flex items-center space-x-2"
-                >
-                  <span>Get Started</span>
-                  <span>→</span>
-                </motion.button>
               </div>
             </div>
           </motion.div>
@@ -277,16 +266,6 @@ const Feed = ({ showComposer = false, setShowComposer = () => {} }) => {
         )}
       </div>
 
-      {/* Thought Composer Modal */}
-      <AnimatePresence>
-        {showComposer && (
-          <ThoughtComposer
-            onClose={() => setShowComposer(false)}
-            onSuccess={handleNewThought}
-          />
-        )}
-      </AnimatePresence>
-
       {/* Comments Modal */}
       <AnimatePresence>
         {selectedThought && (
@@ -302,9 +281,6 @@ const Feed = ({ showComposer = false, setShowComposer = () => {} }) => {
     </div>
   )
 }
-
-// Export setShowComposer so it can be used by parent
-Feed.setShowComposer = null
 
 const TabButton = ({ label, isActive, onClick }) => (
   <button

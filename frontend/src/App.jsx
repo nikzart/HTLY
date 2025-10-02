@@ -6,6 +6,7 @@ import Thoughtmates from './components/Thoughtmates'
 import ChatList from './components/ChatList'
 import ChatWindow from './components/ChatWindow'
 import BottomNav from './components/BottomNav'
+import ThoughtComposer from './components/ThoughtComposer'
 import { UserProvider } from './context/UserContext'
 import { SocketProvider } from './context/SocketContext'
 
@@ -62,6 +63,14 @@ function App() {
     handleViewChange('messages')
   }
 
+  const handleThoughtPosted = () => {
+    setShowComposer(false)
+    // If not on feed, navigate to feed to show the new thought
+    if (currentView !== 'feed') {
+      handleViewChange('feed')
+    }
+  }
+
   return (
     <UserProvider>
       <SocketProvider>
@@ -77,7 +86,7 @@ function App() {
                   animate="animate"
                   exit="exit"
                 >
-                  <Feed showComposer={showComposer} setShowComposer={setShowComposer} />
+                  <Feed />
                 </motion.div>
               )}
               {currentView === 'thoughtmates' && (
@@ -131,6 +140,16 @@ function App() {
             onShareThought={() => setShowComposer(true)}
           />
         </div>
+
+        {/* Global Thought Composer - Available from any page */}
+        <AnimatePresence>
+          {showComposer && (
+            <ThoughtComposer
+              onClose={() => setShowComposer(false)}
+              onSuccess={handleThoughtPosted}
+            />
+          )}
+        </AnimatePresence>
       </SocketProvider>
     </UserProvider>
   )
