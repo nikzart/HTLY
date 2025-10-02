@@ -161,6 +161,10 @@ class Database:
         if 'profile_completed' not in columns:
             cursor.execute('ALTER TABLE users ADD COLUMN profile_completed INTEGER DEFAULT 0')
 
+        # Add avatar_data for base64 encoded images
+        if 'avatar_data' not in columns:
+            cursor.execute('ALTER TABLE users ADD COLUMN avatar_data TEXT')
+
     # User operations
     def create_user(self, username: str, avatar_url: str = None, bio: str = '') -> int:
         conn = self.get_connection()
@@ -187,7 +191,13 @@ class Database:
         cursor.execute('SELECT * FROM users WHERE id = ?', (user_id,))
         user = cursor.fetchone()
         conn.close()
-        return dict(user) if user else None
+        if user:
+            user_dict = dict(user)
+            # Convert avatar_data to data URL if available
+            if user_dict.get('avatar_data') and not user_dict.get('avatar_url', '').startswith('data:'):
+                user_dict['avatar_url'] = f"data:image/jpeg;base64,{user_dict['avatar_data']}"
+            return user_dict
+        return None
 
     def get_user_by_username(self, username: str) -> Optional[dict]:
         conn = self.get_connection()
@@ -195,7 +205,13 @@ class Database:
         cursor.execute('SELECT * FROM users WHERE username = ?', (username,))
         user = cursor.fetchone()
         conn.close()
-        return dict(user) if user else None
+        if user:
+            user_dict = dict(user)
+            # Convert avatar_data to data URL if available
+            if user_dict.get('avatar_data') and not user_dict.get('avatar_url', '').startswith('data:'):
+                user_dict['avatar_url'] = f"data:image/jpeg;base64,{user_dict['avatar_data']}"
+            return user_dict
+        return None
 
     def get_all_users(self) -> List[dict]:
         conn = self.get_connection()
@@ -203,7 +219,14 @@ class Database:
         cursor.execute('SELECT * FROM users ORDER BY created_at DESC')
         users = cursor.fetchall()
         conn.close()
-        return [dict(user) for user in users]
+        result = []
+        for user in users:
+            user_dict = dict(user)
+            # Convert avatar_data to data URL if available
+            if user_dict.get('avatar_data') and not user_dict.get('avatar_url', '').startswith('data:'):
+                user_dict['avatar_url'] = f"data:image/jpeg;base64,{user_dict['avatar_data']}"
+            result.append(user_dict)
+        return result
 
     # Auth0 user operations
     def create_user_with_auth0(self, auth0_id: str, email: str, username: str = None, avatar_url: str = None) -> int:
@@ -229,7 +252,13 @@ class Database:
         cursor.execute('SELECT * FROM users WHERE auth0_id = ?', (auth0_id,))
         user = cursor.fetchone()
         conn.close()
-        return dict(user) if user else None
+        if user:
+            user_dict = dict(user)
+            # Convert avatar_data to data URL if available
+            if user_dict.get('avatar_data') and not user_dict.get('avatar_url', '').startswith('data:'):
+                user_dict['avatar_url'] = f"data:image/jpeg;base64,{user_dict['avatar_data']}"
+            return user_dict
+        return None
 
     def update_user_profile(self, user_id: int, username: str, avatar_url: str, bio: str):
         """Update user profile and mark as completed"""
@@ -238,6 +267,17 @@ class Database:
         cursor.execute(
             'UPDATE users SET username = ?, avatar_url = ?, bio = ?, profile_completed = 1 WHERE id = ?',
             (username, avatar_url, bio, user_id)
+        )
+        conn.commit()
+        conn.close()
+
+    def update_user_avatar_data(self, user_id: int, avatar_data: str):
+        """Update user avatar with base64 encoded image data"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            'UPDATE users SET avatar_data = ? WHERE id = ?',
+            (avatar_data, user_id)
         )
         conn.commit()
         conn.close()

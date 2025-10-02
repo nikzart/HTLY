@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify, send_from_directory, Response
 from flask_cors import CORS
 from flask_socketio import SocketIO, emit
 from database import Database
@@ -7,6 +7,7 @@ from auth_middleware import requires_auth, optional_auth
 from typing import List, Dict
 import os
 import uuid
+import base64
 from werkzeug.utils import secure_filename
 from PIL import Image
 import io
@@ -48,7 +49,7 @@ def allowed_file(filename):
 @app.route('/api/upload/avatar', methods=['POST'])
 @requires_auth
 def upload_avatar():
-    """Upload and process avatar image"""
+    """Upload and process avatar image, store as base64 in database"""
     if 'avatar' not in request.files:
         return jsonify({'error': 'No file provided'}), 400
 
@@ -59,6 +60,14 @@ def upload_avatar():
 
     if not allowed_file(file.filename):
         return jsonify({'error': 'Invalid file type. Allowed: jpg, png, gif, webp'}), 400
+
+    # Get authenticated user
+    auth0_user = request.auth0_user
+    auth0_id = auth0_user.get('sub')
+    user = db.get_user_by_auth0_id(auth0_id)
+
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
 
     try:
         # Read file and check size
@@ -89,16 +98,16 @@ def upload_avatar():
             image = image.crop((left, top, left + size, top + size))
             image = image.resize(AVATAR_SIZE, Image.Resampling.LANCZOS)
 
-        # Generate unique filename
-        file_extension = file.filename.rsplit('.', 1)[1].lower()
-        unique_filename = f"{uuid.uuid4()}.{file_extension}"
-        file_path = os.path.join(UPLOAD_FOLDER, unique_filename)
+        # Convert image to base64
+        buffered = io.BytesIO()
+        image.save(buffered, format="JPEG", quality=85, optimize=True)
+        img_base64 = base64.b64encode(buffered.getvalue()).decode('utf-8')
 
-        # Save optimized image
-        image.save(file_path, quality=85, optimize=True)
+        # Store base64 data in database
+        db.update_user_avatar_data(user['id'], img_base64)
 
-        # Return URL path
-        avatar_url = f"http://localhost:5001/uploads/avatars/{unique_filename}"
+        # Return data URL that frontend can use directly
+        avatar_url = f"data:image/jpeg;base64,{img_base64}"
         return jsonify({'avatar_url': avatar_url}), 200
 
     except Exception as e:
@@ -107,11 +116,28 @@ def upload_avatar():
 
 @app.route('/uploads/avatars/<filename>')
 def serve_avatar(filename):
-    """Serve uploaded avatar images"""
+    """Serve uploaded avatar images (legacy file-based support)"""
     try:
         return send_from_directory('uploads/avatars', filename)
     except Exception as e:
         return jsonify({'error': 'File not found'}), 404
+
+@app.route('/api/users/<int:user_id>/avatar')
+def get_user_avatar(user_id):
+    """Get user avatar as base64 data URL"""
+    user = db.get_user(user_id)
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+
+    if user.get('avatar_data'):
+        # Return data URL from database
+        avatar_url = f"data:image/jpeg;base64,{user['avatar_data']}"
+        return jsonify({'avatar_url': avatar_url}), 200
+    elif user.get('avatar_url'):
+        # Return existing URL (backward compatibility)
+        return jsonify({'avatar_url': user['avatar_url']}), 200
+    else:
+        return jsonify({'error': 'No avatar set'}), 404
 
 # ========== Auth0 endpoints ==========
 
