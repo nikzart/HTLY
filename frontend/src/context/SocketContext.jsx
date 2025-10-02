@@ -17,7 +17,9 @@ export const SocketProvider = ({ children }) => {
 
   useEffect(() => {
     // Initialize socket connection
-    const newSocket = io('http://localhost:5001', {
+    const apiBase = import.meta.env.VITE_API_BASE || 'http://localhost:5001/api'
+    const socketUrl = apiBase.replace('/api', '')
+    const newSocket = io(socketUrl, {
       transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionDelay: 1000,

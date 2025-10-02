@@ -13,6 +13,8 @@ import { UserProvider, UserContext } from './context/UserContext'
 import { SocketProvider, useSocket } from './context/SocketContext'
 import { setupAxiosInterceptors } from './utils/axiosConfig'
 
+const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5001/api'
+
 const pageVariants = {
   initial: (direction) => ({
     x: direction > 0 ? 100 : -100,
@@ -61,7 +63,7 @@ function AppContent() {
 
     const fetchUnreadCount = async () => {
       try {
-        const response = await fetch(`http://localhost:5001/api/users/${currentUser.id}/conversations`)
+        const response = await fetch(`${API_BASE}/users/${currentUser.id}/conversations`)
         const conversations = await response.json()
         const totalUnread = conversations.reduce((sum, conv) => sum + (conv.unread_count || 0), 0)
         setUnreadCount(totalUnread)
