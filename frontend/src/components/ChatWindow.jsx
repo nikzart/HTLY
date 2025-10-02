@@ -261,7 +261,7 @@ const MessageBubble = ({ message, isOwn }) => {
       >
         <p className="text-sm leading-relaxed break-words whitespace-pre-wrap">{message.content}</p>
         <p className={`text-xs mt-1 opacity-70 ${isOwn ? 'text-blue-100' : 'text-gray-400'}`}>
-          {new Date(message.sent_at).toLocaleTimeString('en-US', {
+          {new Date(message.created_at).toLocaleTimeString('en-US', {
             hour: 'numeric',
             minute: '2-digit',
             hour12: true
