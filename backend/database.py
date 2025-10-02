@@ -198,7 +198,12 @@ class Database:
     def get_thought(self, thought_id: int) -> Optional[dict]:
         conn = self.get_connection()
         cursor = conn.cursor()
-        cursor.execute('SELECT * FROM thoughts WHERE id = ?', (thought_id,))
+        cursor.execute('''
+            SELECT t.*, u.username, u.avatar_url
+            FROM thoughts t
+            JOIN users u ON t.user_id = u.id
+            WHERE t.id = ?
+        ''', (thought_id,))
         thought = cursor.fetchone()
         conn.close()
         if thought:
