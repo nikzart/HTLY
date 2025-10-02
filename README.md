@@ -23,6 +23,7 @@ A real-time social platform where like-minded people with similar thoughts can c
 ### Backend
 - Python Flask
 - Flask-SocketIO (WebSocket support)
+- Eventlet (async WSGI server for WebSocket)
 - SQLite database
 - Azure OpenAI (text-embedding-3-large)
 - NumPy for cosine similarity calculations
