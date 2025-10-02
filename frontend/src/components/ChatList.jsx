@@ -35,10 +35,19 @@ const ChatList = ({ onSelectChat }) => {
       fetchConversations()
     }
 
+    const handleConversationDeleted = (data) => {
+      // Remove conversation from list
+      setConversations(prevConversations =>
+        prevConversations.filter(c => c.id !== data.conversation_id)
+      )
+    }
+
     socket.on('message_sent', handleMessageSent)
+    socket.on('conversation_deleted', handleConversationDeleted)
 
     return () => {
       socket.off('message_sent', handleMessageSent)
+      socket.off('conversation_deleted', handleConversationDeleted)
     }
   }, [socket])
 

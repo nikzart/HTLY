@@ -714,3 +714,13 @@ class Database:
         conn.commit()
         conn.close()
         return count
+
+    def delete_conversation(self, conversation_id: int) -> bool:
+        """Delete a conversation and all its messages. Returns True if deleted."""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute('DELETE FROM conversations WHERE id = ?', (conversation_id,))
+        deleted = cursor.rowcount > 0
+        conn.commit()
+        conn.close()
+        return deleted

@@ -45,12 +45,21 @@ const ChatWindow = ({ conversation, onBack }) => {
       }
     }
 
+    const handleConversationDeleted = (data) => {
+      // If this conversation was deleted, navigate back to chat list
+      if (data.conversation_id === conversation.conversation_id) {
+        onBack()
+      }
+    }
+
     socket.on('message_sent', handleMessageSent)
+    socket.on('conversation_deleted', handleConversationDeleted)
 
     return () => {
       socket.off('message_sent', handleMessageSent)
+      socket.off('conversation_deleted', handleConversationDeleted)
     }
-  }, [socket, conversation.conversation_id])
+  }, [socket, conversation.conversation_id, onBack])
 
   // Check if user is at bottom of messages
   const checkIfAtBottom = () => {
@@ -139,8 +148,8 @@ const ChatWindow = ({ conversation, onBack }) => {
         data: { user_id: currentUser.id }
       })
 
-      // Clear messages from local state
-      setMessages([])
+      // Navigate back to chat list after successful deletion
+      onBack()
     } catch (error) {
       console.error('Error clearing chat:', error)
       alert('Failed to clear chat')

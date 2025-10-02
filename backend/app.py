@@ -528,8 +528,15 @@ def clear_conversation_messages(conversation_id):
     if not conversation:
         return jsonify({'error': 'Conversation not found or not authorized'}), 404
 
-    count = db.clear_conversation(conversation_id)
-    return jsonify({'success': True, 'message': f'Cleared {count} messages', 'count': count})
+    # Delete the conversation entirely (CASCADE will delete messages)
+    db.delete_conversation(conversation_id)
+
+    # Broadcast conversation deletion to all clients
+    socketio.emit('conversation_deleted', {
+        'conversation_id': conversation_id
+    })
+
+    return jsonify({'success': True, 'message': 'Conversation deleted successfully'})
 
 @app.route('/api/users/<int:user_id>/unread-count', methods=['GET'])
 def get_unread_count(user_id):
