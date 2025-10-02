@@ -12,10 +12,14 @@ from PIL import Image
 import io
 
 app = Flask(__name__)
-CORS(app, resources={r"/api/*": {"origins": "*"}})
+
+# CORS configuration - update with your Vercel domain after deployment
+allowed_origins = os.getenv('ALLOWED_ORIGINS', '*').split(',')
+CORS(app, resources={r"/api/*": {"origins": allowed_origins}})
 
 # Initialize SocketIO with CORS support
-socketio = SocketIO(app, cors_allowed_origins="*")
+cors_origins = os.getenv('ALLOWED_ORIGINS', '*')
+socketio = SocketIO(app, cors_allowed_origins=cors_origins)
 
 db = Database()
 embedding_service = EmbeddingService()
@@ -786,4 +790,14 @@ def update_user_matches(user_id: int):
             print(f"[DEBUG] Skipping match (similarity {similarity:.4f} <= 0.25 threshold)")
 
 if __name__ == '__main__':
-    socketio.run(app, debug=True, port=5001, allow_unsafe_werkzeug=True)
+    # Use PORT environment variable for production (Railway sets this)
+    port = int(os.getenv('PORT', 5001))
+    debug = os.getenv('FLASK_ENV', 'development') == 'development'
+
+    socketio.run(
+        app,
+        host='0.0.0.0',  # Required for Railway
+        port=port,
+        debug=debug,
+        allow_unsafe_werkzeug=True
+    )
