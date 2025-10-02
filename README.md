@@ -146,9 +146,13 @@ The frontend will run on `http://localhost:5173`
 
 1. **Thought Creation**: When you post a thought, it's sent to Azure OpenAI to generate a 3072-dimensional embedding vector
 2. **Semantic Matching**: The system compares your thought embeddings with other users' embeddings using cosine similarity
-3. **Thoughtmate Discovery**: Users with consistently high similarity scores (>50%) become your "thoughtmates"
-4. **Real-time Updates**: All interactions (likes, comments, messages, deletions) broadcast instantly via WebSocket
-5. **Smart Feed**: Your feed is personalized based on similarity scores and your follows
+3. **Thoughtmate Discovery**: Users are matched using a **top-K algorithm** that averages the 5 highest similarity scores between all thought pairs. This rewards strong connections rather than diluting matches with many weak similarities. Users with >25% average top-5 similarity become your "thoughtmates"
+4. **Match Badges**: Individual thoughts display color-coded match badges based on similarity:
+   - 🟢 **Green** (70-100%): Exceptional match
+   - 🔵 **Blue** (50-69%): Great match
+   - 🟡 **Yellow** (35-49%): Good match
+5. **Real-time Updates**: All interactions (likes, comments, messages, deletions) broadcast instantly via WebSocket
+6. **Smart Feed**: Your feed is personalized based on similarity scores and your follows
 
 ## API Endpoints
 

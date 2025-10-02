@@ -306,9 +306,11 @@ def create_thought():
 
     # Save thought
     thought_id = db.create_thought(user_id, content, embedding)
+    print(f"[DEBUG] Thought {thought_id} created for user {user_id}, calling update_user_matches...")
 
     # Update matches with other users
     update_user_matches(user_id)
+    print(f"[DEBUG] Finished update_user_matches for user {user_id}")
 
     thought = db.get_thought(thought_id)
     # Remove embedding from response
@@ -749,17 +751,22 @@ def get_unread_count(user_id):
 
 def update_user_matches(user_id: int):
     """Update similarity scores between a user and all other users."""
+    print(f"[DEBUG] Updating matches for user {user_id}")
     user_thoughts = db.get_user_thoughts(user_id)
+    print(f"[DEBUG] User {user_id} has {len(user_thoughts)} thoughts")
     if not user_thoughts:
+        print(f"[DEBUG] No thoughts for user {user_id}, skipping")
         return
 
     all_users = db.get_all_users()
+    print(f"[DEBUG] Found {len(all_users)} users in database")
 
     for other_user in all_users:
         if other_user['id'] == user_id:
             continue
 
         other_thoughts = db.get_user_thoughts(other_user['id'])
+        print(f"[DEBUG] User {other_user['id']} has {len(other_thoughts)} thoughts")
         if not other_thoughts:
             continue
 
@@ -768,11 +775,15 @@ def update_user_matches(user_id: int):
             user_thoughts,
             other_thoughts
         )
+        print(f"[DEBUG] Similarity between user {user_id} and {other_user['id']}: {similarity:.4f}")
 
         # Update matches in both directions
-        if similarity > 0.5:  # Only store meaningful matches
+        if similarity > 0.25:  # Only store meaningful matches (lowered from 0.5)
+            print(f"[DEBUG] Creating match (similarity {similarity:.4f} > 0.25 threshold)")
             db.create_or_update_match(user_id, other_user['id'], similarity)
             db.create_or_update_match(other_user['id'], user_id, similarity)
+        else:
+            print(f"[DEBUG] Skipping match (similarity {similarity:.4f} <= 0.25 threshold)")
 
 if __name__ == '__main__':
     socketio.run(app, debug=True, port=5001, allow_unsafe_werkzeug=True)

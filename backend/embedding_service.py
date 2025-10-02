@@ -52,20 +52,29 @@ class EmbeddingService:
         similar_thoughts.sort(key=lambda x: x['similarity_score'], reverse=True)
         return similar_thoughts
 
-    def calculate_user_similarity(self, user1_thoughts: List[dict], user2_thoughts: List[dict]) -> float:
-        """Calculate overall similarity between two users based on their thoughts."""
+    def calculate_user_similarity(self, user1_thoughts: List[dict], user2_thoughts: List[dict], top_k: int = 5) -> float:
+        """
+        Calculate overall similarity between two users based on their thoughts.
+        Uses top-K average: takes the K highest similarity scores and averages them.
+        This rewards strong connections rather than diluting with many weak matches.
+        """
         if not user1_thoughts or not user2_thoughts:
             return 0.0
 
-        total_similarity = 0.0
-        count = 0
+        similarities = []
 
         # Compare each thought from user1 with each thought from user2
         for t1 in user1_thoughts:
             for t2 in user2_thoughts:
                 similarity = self.cosine_similarity(t1['embedding'], t2['embedding'])
-                total_similarity += similarity
-                count += 1
+                similarities.append(similarity)
 
-        # Return average similarity
-        return total_similarity / count if count > 0 else 0.0
+        if not similarities:
+            return 0.0
+
+        # Sort similarities in descending order and take top K
+        similarities.sort(reverse=True)
+        top_similarities = similarities[:min(top_k, len(similarities))]
+
+        # Return average of top K similarities
+        return sum(top_similarities) / len(top_similarities)

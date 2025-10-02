@@ -472,8 +472,14 @@ const ThoughtCard = ({ thought, index, currentUser, onLike, onSave, onCommentCli
         <div className="flex-1">
           <div className="flex items-center space-x-2">
             <span className="font-semibold">{thought.username}</span>
-            {similarityScore && similarityScore > 0.6 && (
-              <span className="px-2 py-0.5 bg-accent-green/20 text-accent-green text-xs rounded-full font-medium">
+            {similarityScore && similarityScore > 0.35 && (
+              <span className={`px-2 py-0.5 text-xs rounded-full font-medium ${
+                similarityScore >= 0.7
+                  ? 'bg-accent-green/20 text-accent-green'
+                  : similarityScore >= 0.5
+                  ? 'bg-accent-blue/20 text-accent-blue'
+                  : 'bg-yellow-500/20 text-yellow-400'
+              }`}>
                 {Math.round(similarityScore * 100)}% match
               </span>
             )}
