@@ -194,7 +194,8 @@ class Database:
         if user:
             user_dict = dict(user)
             # Convert avatar_data to data URL if available
-            if user_dict.get('avatar_data') and not user_dict.get('avatar_url', '').startswith('data:'):
+            avatar_url = user_dict.get('avatar_url') or ''
+            if user_dict.get('avatar_data') and not avatar_url.startswith('data:'):
                 user_dict['avatar_url'] = f"data:image/jpeg;base64,{user_dict['avatar_data']}"
             return user_dict
         return None
@@ -208,7 +209,8 @@ class Database:
         if user:
             user_dict = dict(user)
             # Convert avatar_data to data URL if available
-            if user_dict.get('avatar_data') and not user_dict.get('avatar_url', '').startswith('data:'):
+            avatar_url = user_dict.get('avatar_url') or ''
+            if user_dict.get('avatar_data') and not avatar_url.startswith('data:'):
                 user_dict['avatar_url'] = f"data:image/jpeg;base64,{user_dict['avatar_data']}"
             return user_dict
         return None
@@ -223,7 +225,8 @@ class Database:
         for user in users:
             user_dict = dict(user)
             # Convert avatar_data to data URL if available
-            if user_dict.get('avatar_data') and not user_dict.get('avatar_url', '').startswith('data:'):
+            avatar_url = user_dict.get('avatar_url') or ''
+            if user_dict.get('avatar_data') and not avatar_url.startswith('data:'):
                 user_dict['avatar_url'] = f"data:image/jpeg;base64,{user_dict['avatar_data']}"
             result.append(user_dict)
         return result
@@ -255,7 +258,8 @@ class Database:
         if user:
             user_dict = dict(user)
             # Convert avatar_data to data URL if available
-            if user_dict.get('avatar_data') and not user_dict.get('avatar_url', '').startswith('data:'):
+            avatar_url = user_dict.get('avatar_url') or ''
+            if user_dict.get('avatar_data') and not avatar_url.startswith('data:'):
                 user_dict['avatar_url'] = f"data:image/jpeg;base64,{user_dict['avatar_data']}"
             return user_dict
         return None
