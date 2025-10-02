@@ -21,10 +21,11 @@ const Profile = () => {
 
   useEffect(() => {
     if (currentUser) {
+      setLoading(true)
       fetchData()
       setBio(currentUser.bio || '')
     }
-  }, [currentUser])
+  }, [currentUser?.id])
 
   // Listen for real-time thought deletions
   useEffect(() => {

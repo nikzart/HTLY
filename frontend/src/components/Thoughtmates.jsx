@@ -12,13 +12,13 @@ const Thoughtmates = ({ onStartChat }) => {
   const [thoughtmates, setThoughtmates] = useState([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    if (currentUser) {
-      fetchThoughtmates()
-    }
-  }, [currentUser])
-
   const fetchThoughtmates = async () => {
+    if (!currentUser) {
+      setLoading(false)
+      return
+    }
+
+    setLoading(true)
     try {
       const response = await axios.get(`${API_BASE}/users/${currentUser.id}/thoughtmates?limit=50`)
       setThoughtmates(response.data)
@@ -28,6 +28,10 @@ const Thoughtmates = ({ onStartChat }) => {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    fetchThoughtmates()
+  }, [currentUser?.id])
 
   if (userLoading) {
     return (

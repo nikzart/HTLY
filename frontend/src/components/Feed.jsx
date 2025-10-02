@@ -21,7 +21,7 @@ const Feed = () => {
     if (currentUser) {
       fetchThoughts()
     }
-  }, [currentUser, activeTab])
+  }, [currentUser?.id, activeTab])
 
   // Real-time event listeners
   useEffect(() => {
@@ -30,7 +30,9 @@ const Feed = () => {
     const handleThoughtLiked = (data) => {
       setThoughts(prevThoughts =>
         prevThoughts.map(t =>
-          t.id === data.thought_id ? { ...t, ...data.thought } : t
+          t.id === data.thought_id
+            ? { ...t, like_count: data.thought.like_count }  // Only update like count, preserve user's own is_liked state
+            : t
         )
       )
     }
@@ -38,7 +40,9 @@ const Feed = () => {
     const handleThoughtUnliked = (data) => {
       setThoughts(prevThoughts =>
         prevThoughts.map(t =>
-          t.id === data.thought_id ? { ...t, ...data.thought } : t
+          t.id === data.thought_id
+            ? { ...t, like_count: data.thought.like_count }  // Only update like count, preserve user's own is_liked state
+            : t
         )
       )
     }

@@ -42,6 +42,7 @@ function AppContent() {
   const [prevView, setPrevView] = useState('feed')
   const [showComposer, setShowComposer] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
+  const [mountCounter, setMountCounter] = useState(0)
 
   const views = ['feed', 'thoughtmates', 'messages', 'profile']
 
@@ -61,7 +62,7 @@ function AppContent() {
     }
 
     fetchUnreadCount()
-  }, [currentUser])
+  }, [currentUser?.id])
 
   // Listen for new messages and update unread count
   useEffect(() => {
@@ -91,6 +92,7 @@ function AppContent() {
     setDirection(newIndex > currentIndex ? 1 : -1)
     setPrevView(currentView)
     setCurrentView(newView)
+    setMountCounter(prev => prev + 1)
   }
 
   const handleSelectChat = (conversation) => {
@@ -125,63 +127,19 @@ function AppContent() {
   return (
     <div className="min-h-screen bg-dark-bg text-white overflow-hidden">
           <div className="max-w-md mx-auto">
-            <AnimatePresence mode="wait" initial={false} custom={direction}>
-              {currentView === 'feed' && (
-                <motion.div
-                  key="feed"
-                  custom={direction}
-                  variants={pageVariants}
-                  initial="initial"
-                  animate="animate"
-                  exit="exit"
-                >
-                  <Feed />
-                </motion.div>
-              )}
-              {currentView === 'thoughtmates' && (
-                <motion.div
-                  key="thoughtmates"
-                  custom={direction}
-                  variants={pageVariants}
-                  initial="initial"
-                  animate="animate"
-                  exit="exit"
-                >
-                  <Thoughtmates onStartChat={handleStartChat} />
-                </motion.div>
-              )}
+              {currentView === 'feed' && <Feed />}
+              {currentView === 'thoughtmates' && <Thoughtmates onStartChat={handleStartChat} />}
               {currentView === 'messages' && (
-                <motion.div
-                  key="messages"
-                  custom={direction}
-                  variants={pageVariants}
-                  initial="initial"
-                  animate="animate"
-                  exit="exit"
-                >
-                  {selectedConversation ? (
-                    <ChatWindow
-                      conversation={selectedConversation}
-                      onBack={handleBackToList}
-                    />
-                  ) : (
-                    <ChatList onSelectChat={handleSelectChat} />
-                  )}
-                </motion.div>
+                selectedConversation ? (
+                  <ChatWindow
+                    conversation={selectedConversation}
+                    onBack={handleBackToList}
+                  />
+                ) : (
+                  <ChatList onSelectChat={handleSelectChat} />
+                )
               )}
-              {currentView === 'profile' && (
-                <motion.div
-                  key="profile"
-                  custom={direction}
-                  variants={pageVariants}
-                  initial="initial"
-                  animate="animate"
-                  exit="exit"
-                >
-                  <Profile />
-                </motion.div>
-              )}
-            </AnimatePresence>
+              {currentView === 'profile' && <Profile />}
           </div>
           <BottomNav
             currentView={currentView}

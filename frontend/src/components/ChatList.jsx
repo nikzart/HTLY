@@ -14,17 +14,20 @@ const ChatList = ({ onSelectChat }) => {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (currentUser) {
-      fetchConversations()
-
-      // Poll for conversation updates every 5 seconds as fallback for WebSocket
-      const pollInterval = setInterval(() => {
-        fetchConversations()
-      }, 5000)
-
-      return () => clearInterval(pollInterval)
+    if (!currentUser) {
+      setLoading(false)
+      return
     }
-  }, [currentUser])
+
+    fetchConversations()
+
+    // Poll for conversation updates every 5 seconds as fallback for WebSocket
+    const pollInterval = setInterval(() => {
+      fetchConversations()
+    }, 5000)
+
+    return () => clearInterval(pollInterval)
+  }, [currentUser?.id])
 
   // Real-time message listener
   useEffect(() => {
