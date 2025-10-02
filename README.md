@@ -4,6 +4,9 @@ A real-time social platform where like-minded people with similar thoughts can c
 
 ## Features
 
+- 🔐 **Auth0 Authentication**: Secure signup, login, and password recovery with OAuth support
+- 👤 **Profile Setup**: Customizable profiles with username, bio, and avatar
+- 🖼️ **Avatar Upload**: Upload custom avatars with automatic image optimization and resizing
 - 🧠 **Semantic Matching**: Advanced AI-powered matching using Azure OpenAI embeddings
 - 💬 **Real-time Messaging**: Direct chat with your thoughtmates using WebSockets
 - ⚡ **Live Updates**: Real-time notifications for likes, comments, and new thoughts
@@ -13,6 +16,7 @@ A real-time social platform where like-minded people with similar thoughts can c
 - 👥 **Follow System**: Follow users to see their thoughts in your feed
 - 🎨 **Beautiful UI**: Dark theme with smooth animations and mobile-first design
 - 🔄 **Multiple Feeds**: Trending, News, Following, and Saved thoughts tabs
+- ⬆️ **Scroll to Top**: Quick navigation button in feed for better UX
 
 ## Tech Stack
 
@@ -22,6 +26,8 @@ A real-time social platform where like-minded people with similar thoughts can c
 - SQLite database
 - Azure OpenAI (text-embedding-3-large)
 - NumPy for cosine similarity calculations
+- Auth0 (JWT authentication)
+- Pillow (image processing)
 
 ### Frontend
 - React 18 with Hooks
@@ -31,6 +37,7 @@ A real-time social platform where like-minded people with similar thoughts can c
 - Lucide React Icons
 - Socket.IO Client
 - Axios
+- Auth0 React SDK
 
 ## Setup Instructions
 
@@ -39,6 +46,7 @@ A real-time social platform where like-minded people with similar thoughts can c
 - Node.js 16+
 - npm or yarn
 - Azure OpenAI API access
+- Auth0 account (for authentication)
 
 ### Backend Setup
 
@@ -58,12 +66,28 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-4. Configure environment variables in `.env`:
+4. Configure environment variables by copying `.env.example` to `.env`:
+```bash
+cp .env.example .env
+```
+
+Then edit `.env` with your credentials:
 ```env
-AZURE_OPENAI_ENDPOINT=https://xandar.cognitiveservices.azure.com/
-AZURE_OPENAI_API_KEY=your_api_key
+# Auth0 Configuration
+AUTH0_DOMAIN=your-tenant.auth0.com
+AUTH0_CLIENT_ID=your_auth0_client_id
+AUTH0_CLIENT_SECRET=your_auth0_client_secret
+AUTH0_AUDIENCE=https://your-tenant.auth0.com/api/v2/
+AUTH0_ALGORITHMS=RS256
+
+# Azure OpenAI Configuration
+AZURE_OPENAI_API_KEY=your_azure_openai_api_key
+AZURE_OPENAI_ENDPOINT=https://your-resource.cognitiveservices.azure.com/
 AZURE_OPENAI_API_VERSION=2024-12-01-preview
 AZURE_OPENAI_DEPLOYMENT=text-embedding-3-large
+
+# API Configuration
+FLASK_ENV=development
 ```
 
 5. Start the Flask server:
@@ -85,7 +109,20 @@ cd frontend
 npm install
 ```
 
-3. Start the development server:
+3. Configure environment variables by copying `.env.example` to `.env`:
+```bash
+cp .env.example .env
+```
+
+Then edit `.env` with your Auth0 credentials:
+```env
+VITE_AUTH0_DOMAIN=your-tenant.auth0.com
+VITE_AUTH0_CLIENT_ID=your_auth0_client_id
+VITE_AUTH0_AUDIENCE=https://your-tenant.auth0.com/api/v2/
+VITE_API_BASE=http://localhost:5001/api
+```
+
+4. Start the development server:
 ```bash
 npm run dev
 ```
@@ -94,13 +131,15 @@ The frontend will run on `http://localhost:5173`
 
 ## Usage
 
-1. **Sign Up**: Enter a username to get started
-2. **Post Thoughts**: Share what's on your mind using the floating action button
-3. **Discover Thoughtmates**: The AI will automatically find users with similar thoughts
-4. **Interact**: Like, comment, and save thoughts you resonate with
-5. **Follow Users**: Follow thoughtmates to see their thoughts in your feed
-6. **Chat**: Send direct messages to your thoughtmates in real-time
-7. **Explore Feeds**: Browse Trending, News, Following, and Saved thoughts
+1. **Sign Up/Login**: Authenticate with Auth0 (email/password or social login)
+2. **Complete Profile**: Set up your username, bio, and avatar (upload or URL)
+3. **Post Thoughts**: Share what's on your mind using the floating action button
+4. **Discover Thoughtmates**: The AI will automatically find users with similar thoughts
+5. **Interact**: Like, comment, and save thoughts you resonate with
+6. **Follow Users**: Follow thoughtmates to see their thoughts in your feed
+7. **Chat**: Send direct messages to your thoughtmates in real-time
+8. **Explore Feeds**: Browse Trending, News, Following, and Saved thoughts
+9. **Customize Avatar**: Upload custom images or use URLs for your profile picture
 
 ## How It Works
 
@@ -112,11 +151,19 @@ The frontend will run on `http://localhost:5173`
 
 ## API Endpoints
 
+### Authentication
+- `POST /api/auth/profile` - Create or update user profile (Auth0 protected)
+- `PUT /api/auth/profile` - Update user profile (Auth0 protected)
+
 ### Users
 - `POST /api/users` - Create a new user
 - `GET /api/users/:id` - Get user details with stats
 - `GET /api/users` - Get all users
 - `PUT /api/users/:id/bio` - Update user bio
+
+### Avatar Upload
+- `POST /api/upload/avatar` - Upload avatar image (Auth0 protected, max 5MB)
+- `GET /uploads/avatars/:filename` - Serve uploaded avatar images
 
 ### Thoughts
 - `POST /api/thoughts` - Create a new thought (generates embeddings)
@@ -178,34 +225,45 @@ HTLY/
 │   ├── app.py              # Flask + SocketIO application
 │   ├── database.py         # SQLite database operations
 │   ├── embedding_service.py # Azure OpenAI embedding service
+│   ├── auth_middleware.py  # Auth0 JWT verification
 │   ├── requirements.txt    # Python dependencies
-│   ├── .env               # Environment variables
-│   └── htly.db            # SQLite database (auto-generated)
+│   ├── .env               # Environment variables (not in git)
+│   ├── .env.example       # Environment variables template
+│   ├── .gitignore         # Git ignore rules
+│   ├── htly.db            # SQLite database (auto-generated)
+│   └── uploads/           # Uploaded files (not in git)
+│       └── avatars/       # User avatar images
 └── frontend/
     ├── src/
     │   ├── components/
-    │   │   ├── Feed.jsx           # Main feed with tabs
+    │   │   ├── Feed.jsx           # Main feed with tabs & scroll
     │   │   ├── Profile.jsx        # User profile & settings
+    │   │   ├── ProfileSetup.jsx   # New user onboarding
     │   │   ├── Thoughtmates.jsx   # Thoughtmates discovery
     │   │   ├── ChatList.jsx       # Conversations list
     │   │   ├── ChatWindow.jsx     # Message thread
     │   │   ├── CommentsModal.jsx  # Thought comments
     │   │   ├── ThoughtComposer.jsx # Create thought modal
     │   │   ├── BottomNav.jsx      # Navigation bar
-    │   │   └── LoginPrompt.jsx    # Login screen
+    │   │   └── LoginPrompt.jsx    # Auth0 login screen
     │   ├── context/
-    │   │   ├── UserContext.jsx    # User authentication
+    │   │   ├── UserContext.jsx    # User authentication state
     │   │   └── SocketContext.jsx  # WebSocket connection
+    │   ├── config/
+    │   │   └── axiosConfig.js     # Axios Auth0 interceptor
     │   ├── App.jsx         # Main app component
-    │   └── main.jsx        # Entry point
+    │   ├── main.jsx        # Entry point with Auth0Provider
+    │   └── index.css       # Global styles
     ├── package.json        # Node dependencies
     ├── tailwind.config.js  # Tailwind configuration
-    └── vite.config.js      # Vite configuration
+    ├── vite.config.js      # Vite configuration
+    ├── .env               # Environment variables (not in git)
+    └── .env.example       # Environment variables template
 ```
 
 ## Database Schema
 
-- **users**: User accounts with username, avatar, bio
+- **users**: User accounts with auth0_id, username, avatar_url, bio, email
 - **thoughts**: User thoughts with content and embeddings
 - **matches**: Pre-calculated thoughtmate similarity scores
 - **likes**: Thought likes
@@ -228,11 +286,14 @@ The UI is inspired by modern social platforms, featuring:
 
 ## Security Considerations
 
-- User authentication via localStorage (client-side)
-- Authorization checks on all API endpoints
-- Ownership verification for delete operations
-- SQL injection prevention via parameterized queries
-- Input validation on all user inputs
+- **Auth0 Authentication**: Industry-standard OAuth2/OIDC authentication
+- **JWT Tokens**: Secure token-based authorization on protected endpoints
+- **Authorization Checks**: All API endpoints verify user permissions
+- **Ownership Verification**: Delete operations validate resource ownership
+- **SQL Injection Prevention**: Parameterized queries throughout
+- **Input Validation**: File uploads validated for type, size, and content
+- **Image Processing**: Uploaded images sanitized and optimized
+- **Secure File Storage**: Uploaded files stored outside web root
 
 ## Performance Optimizations
 
@@ -242,19 +303,24 @@ The UI is inspired by modern social platforms, featuring:
 - Optimistic UI updates
 - Lazy loading of conversations
 - Efficient similarity calculations with NumPy
+- Image optimization and resizing on upload
+- Scroll performance with virtualization patterns
 
 ## Future Enhancements
 
-- [ ] User authentication (OAuth, JWT)
-- [ ] Profile pictures upload
-- [ ] Thought media attachments
+- [x] User authentication (OAuth, JWT) ✅
+- [x] Profile pictures upload ✅
+- [ ] Thought media attachments (images, videos)
 - [ ] Advanced search and filtering
 - [ ] Hashtags and categories
 - [ ] User reputation/karma system
 - [ ] Notification center
 - [ ] Email notifications
+- [ ] Push notifications
 - [ ] Mobile app (React Native)
 - [ ] Analytics dashboard
+- [ ] Dark/Light theme toggle
+- [ ] Export user data (GDPR compliance)
 
 ## Contributing
 
